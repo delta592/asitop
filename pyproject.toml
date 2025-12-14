@@ -1,0 +1,105 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asitop"
+version = "0.0.22"
+description = "Performance monitoring CLI tool for Apple Silicon"
+readme = "README.md"
+requires-python = ">=3.8.1"
+license = {text = "MIT"}
+keywords = ["asitop", "apple silicon", "performance", "monitoring"]
+authors = [
+    {name = "Timothy Liu", email = "tlkh.xms@gmail.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+]
+dependencies = [
+    "dashing>=0.1.0",
+    "psutil>=5.8.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "mock>=5.0.0",
+    "coverage>=7.0.0",
+    "pylint>=2.15.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "types-psutil>=5.9.0",
+]
+
+[project.scripts]
+asitop = "asitop.asitop:main"
+
+[project.urls]
+Homepage = "https://github.com/tlkh/asitop"
+Repository = "https://github.com/tlkh/asitop"
+
+[tool.setuptools]
+packages = ["asitop"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=asitop --cov-report=html --cov-report=term-missing"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["asitop"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pylint.messages_control]
+max-line-length = 100
+disable = [
+    "C0111",  # missing-docstring
+    "C0103",  # invalid-name
+]
+
+[tool.flake8]
+max-line-length = 100
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+]

@@ -273,3 +273,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,vim,macos,windows
+
+### uv ###
+# uv lock file should be committed to version control
+# Virtual environment is already ignored above (.venv)

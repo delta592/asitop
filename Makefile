@@ -1,26 +1,24 @@
 # Makefile for asitop
 # Provides commands for testing, running, and managing the project
+# Uses uv for dependency management
 
-.PHONY: help venv install install-dev test test-verbose test-coverage \
+.PHONY: help sync install install-dev test test-verbose test-coverage \
         test-watch clean clean-pyc clean-test run lint format check \
         coverage-html coverage-report dist upload-test upload
 
-# Python interpreter
-PYTHON := python3
-VENV := venv
-VENV_BIN := $(VENV)/bin
-VENV_PYTHON := $(VENV_BIN)/python
-VENV_PIP := $(VENV_BIN)/pip
-VENV_PYTEST := $(VENV_BIN)/pytest
+# uv configuration
+UV := uv
+UV_RUN := $(UV) run
+VENV := .venv
 
 # Default target
 help:
 	@echo "asitop Makefile commands:"
 	@echo ""
 	@echo "Setup commands:"
-	@echo "  make venv           Create virtual environment"
-	@echo "  make install        Install production dependencies"
-	@echo "  make install-dev    Install development and test dependencies"
+	@echo "  make sync           Sync all dependencies (uv sync)"
+	@echo "  make install        Install production dependencies only"
+	@echo "  make install-dev    Install production and test dependencies"
 	@echo ""
 	@echo "Testing commands:"
 	@echo "  make test           Run all tests"
@@ -48,91 +46,86 @@ help:
 	@echo "  make upload-test    Upload to TestPyPI"
 	@echo "  make upload         Upload to PyPI"
 
-# Create virtual environment
-venv:
-	@echo "Creating virtual environment..."
-	$(PYTHON) -m venv $(VENV)
-	@echo "Virtual environment created at ./$(VENV)"
-	@echo "Activate with: source $(VENV_BIN)/activate"
+# Sync all dependencies (production only)
+sync:
+	@echo "Syncing production dependencies with uv..."
+	$(UV) sync --no-dev
+	@echo "Production dependencies synced"
 
-# Install production dependencies
-install: venv
-	@echo "Installing production dependencies..."
-	$(VENV_PIP) install --upgrade pip
-	$(VENV_PIP) install -r requirements.txt || \
-		($(VENV_PIP) install dashing psutil && echo "Installed from setup.py requirements")
+# Install production dependencies (same as sync)
+install: sync
 	@echo "Production dependencies installed"
 
 # Install development and test dependencies
-install-dev: install
-	@echo "Installing development dependencies..."
-	$(VENV_PIP) install -r requirements-test.txt
-	@echo "Development dependencies installed"
+install-dev:
+	@echo "Syncing all dependencies (including test) with uv..."
+	$(UV) sync --extra test
+	@echo "All dependencies installed"
 
 # Run all tests
 test: install-dev
 	@echo "Running tests..."
-	$(VENV_PYTEST) tests/ -v
+	$(UV_RUN) pytest tests/ -v
 
 # Run tests with verbose output
 test-verbose: install-dev
 	@echo "Running tests with verbose output..."
-	$(VENV_PYTEST) tests/ -vv
+	$(UV_RUN) pytest tests/ -vv
 
 # Run tests with coverage
 test-coverage: install-dev
 	@echo "Running tests with coverage..."
-	$(VENV_PYTEST) --cov=asitop --cov-report=term-missing tests/
+	$(UV_RUN) pytest --cov=asitop --cov-report=term-missing tests/
 
 # Generate HTML coverage report
 coverage-html: install-dev
 	@echo "Generating HTML coverage report..."
-	$(VENV_PYTEST) --cov=asitop --cov-report=html tests/
+	$(UV_RUN) pytest --cov=asitop --cov-report=html tests/
 	@echo "Coverage report generated at htmlcov/index.html"
 	@echo "Open with: open htmlcov/index.html (macOS) or xdg-open htmlcov/index.html (Linux)"
 
 # Generate terminal coverage report
 coverage-report: install-dev
 	@echo "Generating coverage report..."
-	$(VENV_PYTEST) --cov=asitop --cov-report=term --cov-report=html tests/
+	$(UV_RUN) pytest --cov=asitop --cov-report=term --cov-report=html tests/
 	@echo ""
 	@echo "HTML report available at htmlcov/index.html"
 
 # Run tests on file changes (requires pytest-watch)
 test-watch: install-dev
 	@echo "Running tests in watch mode..."
-	@echo "Install pytest-watch if not available: $(VENV_PIP) install pytest-watch"
-	@$(VENV_BIN)/ptw tests/ -- -v || \
+	@echo "Install pytest-watch if not available: uv add --dev pytest-watch"
+	@$(UV_RUN) ptw tests/ -- -v || \
 		(echo "pytest-watch not installed. Installing..." && \
-		$(VENV_PIP) install pytest-watch && \
-		$(VENV_BIN)/ptw tests/ -- -v)
+		$(UV) add --dev pytest-watch && \
+		$(UV_RUN) ptw tests/ -- -v)
 
 # Run asitop with sudo
 run: install
 	@echo "Running asitop with sudo (password required)..."
 	@echo "Press Ctrl+C to stop"
-	@sudo $(VENV_PYTHON) -m asitop.asitop
+	@sudo $(UV_RUN) asitop
 
 # Run asitop without sudo (will prompt when needed)
 run-nosudo: install
 	@echo "Running asitop (will prompt for sudo password)..."
 	@echo "Press Ctrl+C to stop"
-	@$(VENV_PYTHON) -m asitop.asitop
+	@$(UV_RUN) asitop
 
 # Run linters
 lint: install-dev
 	@echo "Running flake8..."
-	-$(VENV_BIN)/flake8 asitop --count --select=E9,F63,F7,F82 --show-source --statistics
-	-$(VENV_BIN)/flake8 asitop --count --max-line-length=79 --statistics
+	-$(UV_RUN) flake8 asitop --count --select=E9,F63,F7,F82 --show-source --statistics
+	-$(UV_RUN) flake8 asitop --count --max-line-length=79 --statistics
 	@echo ""
 	@echo "Running pylint..."
-	-$(VENV_BIN)/pylint asitop --max-line-length=79
+	-$(UV_RUN) pylint asitop --max-line-length=79
 
 # Format code
 format: install-dev
 	@echo "Formatting code with autopep8..."
-	@$(VENV_PIP) install autopep8 2>/dev/null || true
-	-$(VENV_BIN)/autopep8 --in-place --aggressive --aggressive -r asitop/
+	@$(UV) add --dev autopep8 2>/dev/null || true
+	-$(UV_RUN) autopep8 --in-place --aggressive --aggressive -r asitop/
 	@echo "Code formatted"
 
 # Run all quality checks
@@ -179,14 +172,14 @@ clean-test:
 # Build distribution packages
 dist: install-dev clean
 	@echo "Building distribution packages..."
-	$(VENV_PYTHON) setup.py sdist bdist_wheel
+	$(UV) build
 	@echo "Distribution packages built in dist/"
 
 # Upload to TestPyPI
 upload-test: dist
 	@echo "Uploading to TestPyPI..."
-	@$(VENV_PIP) install twine 2>/dev/null || true
-	$(VENV_BIN)/twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+	@$(UV) tool install twine 2>/dev/null || true
+	$(UV) tool run twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 # Upload to PyPI
 upload: dist
@@ -195,8 +188,8 @@ upload: dist
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		$(VENV_PIP) install twine 2>/dev/null || true; \
-		$(VENV_BIN)/twine upload dist/*; \
+		$(UV) tool install twine 2>/dev/null || true; \
+		$(UV) tool run twine upload dist/*; \
 	else \
 		echo "Upload cancelled"; \
 	fi

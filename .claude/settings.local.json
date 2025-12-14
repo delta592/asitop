@@ -7,7 +7,15 @@
       "Bash(/Applications/Xcode.app/Contents/Developer/usr/bin/python3 -m pytest:*)",
       "Bash(chmod:*)",
       "Bash(shellcheck:*)",
-      "Bash(make help:*)"
+      "Bash(make help:*)",
+      "Bash(uv init:*)",
+      "Bash(curl:*)",
+      "Bash(sh)",
+      "Bash(uv --version:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run asitop --help:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(make test:*)"
     ]
   }
 }
