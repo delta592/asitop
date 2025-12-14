@@ -127,19 +127,22 @@ def parse_powermetrics(
 ) -> tuple[dict, dict, str, None, int] | Literal[False]:
     """Parse powermetrics plist file and extract metrics.
 
-    This mirrors the lightweight approach from commit 74ebe2cb: read the file,
-    split on null bytes, and parse the newest complete plist. If the last entry
-    is incomplete, fall back to the previous one.
+    To avoid unbounded memory growth, only the last slice of the file is read.
+    We then split on null bytes and parse the newest complete plist. If the last
+    entry is incomplete, fall back to previous entries in that slice.
     """
-    data: list[bytes] | None = None
     try:
         with open(path + timecode, "rb") as fp:
-            blob = fp.read()
-        data = blob.split(b"\x00")
-        # Try last entry; if corrupted, try the previous one.
-        for part in (data[-1], data[-2] if len(data) > 1 else b""):
-            if not part:
-                continue
+            fp.seek(0, 2)
+            size = fp.tell()
+            # Read only the tail of the file to avoid unbounded growth.
+            # Use a generous window to avoid cutting a plist in half.
+            chunk_size = min(500000, size)
+            fp.seek(max(0, size - chunk_size))
+            data = fp.read()
+
+        parts = [p for p in data.split(b"\x00") if p]
+        for part in reversed(parts):
             try:
                 powermetrics_parse = plistlib.loads(part)
                 thermal_pressure = parse_thermal_pressure(powermetrics_parse)
