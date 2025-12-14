@@ -277,3 +277,4 @@ $RECYCLE.BIN/
 ### uv ###
 # uv lock file should be committed to version control
 # Virtual environment is already ignored above (.venv)
+.uv-cache/
