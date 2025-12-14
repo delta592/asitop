@@ -1,8 +1,0 @@
-# Production dependencies for asitop
-# Performance monitoring CLI tool for Apple Silicon
-
-# Terminal UI framework for creating dashboards
-dashing>=0.1.0
-
-# System and process utilities
-psutil>=5.8.0

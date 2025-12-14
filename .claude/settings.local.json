@@ -15,7 +15,8 @@
       "Bash(uv sync:*)",
       "Bash(uv run asitop --help:*)",
       "Bash(uv run pytest:*)",
-      "Bash(make test:*)"
+      "Bash(make test:*)",
+      "Bash(uv build:*)"
     ]
   }
 }
