@@ -1,5 +1,5 @@
 import glob
-import os
+import pathlib
 import plistlib
 import subprocess
 from subprocess import PIPE
@@ -12,6 +12,7 @@ from .parsers import (
     parse_gpu_metrics,
     parse_thermal_pressure,
 )
+
 
 # SOC specifications database for Apple Silicon chips
 # Power values in Watts, Bandwidth in GB/s
@@ -132,7 +133,7 @@ def parse_powermetrics(
     entry is incomplete, fall back to previous entries in that slice.
     """
     try:
-        with open(path + timecode, "rb") as fp:
+        with pathlib.Path(path + timecode).open("rb") as fp:
             fp.seek(0, 2)
             size = fp.tell()
             # Read only the tail of the file to avoid unbounded growth.
@@ -196,7 +197,7 @@ def run_powermetrics_process(
     """
     # Clean up old powermetrics files
     for tmpf in glob.glob("/tmp/asitop_powermetrics*"):
-        os.remove(tmpf)
+        pathlib.Path(tmpf).unlink(missing_ok=True)
 
     output_file = f"/tmp/asitop_powermetrics{timecode}"
 
@@ -216,8 +217,7 @@ def run_powermetrics_process(
         str(interval),
     ]
 
-    process = subprocess.Popen(command, stdin=PIPE, stdout=PIPE)
-    return process
+    return subprocess.Popen(command, stdin=PIPE, stdout=PIPE)
 
 
 def get_ram_metrics_dict() -> dict[str, float | int | None]:
@@ -241,7 +241,7 @@ def get_ram_metrics_dict() -> dict[str, float | int | None]:
     else:
         swap_free_percent = None
 
-    ram_metrics_dict = {
+    return {
         "total_GB": round(total_gb, 1),
         "free_GB": round(free_gb, 1),
         "used_GB": round(used_gb, 1),
@@ -251,8 +251,6 @@ def get_ram_metrics_dict() -> dict[str, float | int | None]:
         "swap_free_GB": swap_free_gb,
         "swap_free_percent": swap_free_percent,
     }
-
-    return ram_metrics_dict
 
 
 def get_cpu_info() -> dict[str, str]:
@@ -363,7 +361,7 @@ def get_soc_info() -> dict[str, Any]:
     # Get specs from SOC_SPECS dictionary, with fallback to default
     specs = SOC_SPECS.get(soc_name, SOC_SPECS["_default"])
 
-    soc_info = {
+    return {
         "name": soc_name,
         "core_count": core_count,
         "cpu_max_power": specs["cpu_max_power"],
@@ -374,5 +372,3 @@ def get_soc_info() -> dict[str, Any]:
         "p_core_count": p_core_count,
         "gpu_core_count": get_gpu_cores(),
     }
-
-    return soc_info

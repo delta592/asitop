@@ -35,11 +35,11 @@ class TestArgumentParsing(unittest.TestCase):
 
             args = parser.parse_args([])
 
-            self.assertEqual(args.interval, 1)
-            self.assertEqual(args.color, 2)
-            self.assertEqual(args.avg, 30)
-            self.assertEqual(args.show_cores, False)
-            self.assertEqual(args.max_count, 0)
+            assert args.interval == 1
+            assert args.color == 2
+            assert args.avg == 30
+            assert not args.show_cores
+            assert args.max_count == 0
 
     def test_custom_interval(self) -> None:
         """
@@ -55,7 +55,7 @@ class TestArgumentParsing(unittest.TestCase):
 
         args = parser.parse_args(["--interval", "5"])
 
-        self.assertEqual(args.interval, 5)
+        assert args.interval == 5
 
     def test_custom_color(self) -> None:
         """
@@ -70,7 +70,7 @@ class TestArgumentParsing(unittest.TestCase):
 
         args = parser.parse_args(["--color", "5"])
 
-        self.assertEqual(args.color, 5)
+        assert args.color == 5
 
     def test_custom_avg(self) -> None:
         """
@@ -85,7 +85,7 @@ class TestArgumentParsing(unittest.TestCase):
 
         args = parser.parse_args(["--avg", "60"])
 
-        self.assertEqual(args.avg, 60)
+        assert args.avg == 60
 
     def test_max_count_argument(self) -> None:
         """
@@ -101,7 +101,7 @@ class TestArgumentParsing(unittest.TestCase):
 
         args = parser.parse_args(["--max_count", "500"])
 
-        self.assertEqual(args.max_count, 500)
+        assert args.max_count == 500
 
 
 class TestMainFunction(unittest.TestCase):
@@ -131,7 +131,6 @@ class TestMainFunction(unittest.TestCase):
                 patch("asitop.asitop.clear_console") as mock_clear,
                 patch("asitop.asitop.time.sleep") as mock_sleep,
             ):
-
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
                     "core_count": 8,
@@ -206,7 +205,6 @@ class TestMainFunction(unittest.TestCase):
                 patch("asitop.asitop.parse_powermetrics") as mock_parse,
                 patch("asitop.asitop.time.sleep") as mock_sleep,
             ):
-
                 mock_get_soc.return_value = {
                     "name": "Apple M1 Max",
                     "core_count": 10,
@@ -266,16 +264,16 @@ class TestDequeMemoryManagement(unittest.TestCase):
 
         # Simulate the chart datapoints initialization
         max_chart_points = 200
-        cpu_power_datapoints = deque([], maxlen=max_chart_points)
+        cpu_power_datapoints = deque(maxlen=max_chart_points)
 
         # Add more than max points
         for i in range(300):
             cpu_power_datapoints.append(i)
 
         # Should only keep the last 200 points
-        self.assertEqual(len(cpu_power_datapoints), max_chart_points)
-        self.assertEqual(cpu_power_datapoints[0], 100)
-        self.assertEqual(cpu_power_datapoints[-1], 299)
+        assert len(cpu_power_datapoints) == max_chart_points
+        assert cpu_power_datapoints[0] == 100
+        assert cpu_power_datapoints[-1] == 299
 
     def test_avg_power_list_maxlen(self) -> None:
         """
@@ -290,16 +288,16 @@ class TestDequeMemoryManagement(unittest.TestCase):
         avg_seconds = 30
         maxlen = int(avg_seconds / interval)
 
-        avg_cpu_power_list = deque([], maxlen=maxlen)
+        avg_cpu_power_list = deque(maxlen=maxlen)
 
         # Add more samples than the window
         for i in range(50):
             avg_cpu_power_list.append(i)
 
         # Should only keep last 30 samples
-        self.assertEqual(len(avg_cpu_power_list), 30)
-        self.assertEqual(avg_cpu_power_list[0], 20)
-        self.assertEqual(avg_cpu_power_list[-1], 49)
+        assert len(avg_cpu_power_list) == 30
+        assert avg_cpu_power_list[0] == 20
+        assert avg_cpu_power_list[-1] == 49
 
 
 class TestGetAvgFunction(unittest.TestCase):
@@ -314,7 +312,7 @@ class TestGetAvgFunction(unittest.TestCase):
         """
         test_values = [10, 20, 30, 40, 50]
         avg = sum(test_values) / len(test_values)
-        self.assertEqual(avg, 30.0)
+        assert avg == 30.0
 
     def test_get_avg_single_value(self) -> None:
         """
@@ -324,7 +322,7 @@ class TestGetAvgFunction(unittest.TestCase):
         """
         test_values = [42]
         avg = sum(test_values) / len(test_values)
-        self.assertEqual(avg, 42.0)
+        assert avg == 42.0
 
     def test_get_avg_floating_point(self) -> None:
         """
@@ -350,7 +348,7 @@ class TestRestartLogic(unittest.TestCase):
         """
         max_count = 0
         restart_interval = max_count if max_count > 0 else 300
-        self.assertEqual(restart_interval, 300)
+        assert restart_interval == 300
 
     def test_restart_interval_custom(self) -> None:
         """
@@ -360,7 +358,7 @@ class TestRestartLogic(unittest.TestCase):
         """
         max_count = 500
         restart_interval = max_count if max_count > 0 else 300
-        self.assertEqual(restart_interval, 500)
+        assert restart_interval == 500
 
     def test_restart_counter_increments(self) -> None:
         """
@@ -380,8 +378,8 @@ class TestRestartLogic(unittest.TestCase):
                 break
             count += 1
 
-        self.assertTrue(restart_triggered)
-        self.assertEqual(count, 0)
+        assert restart_triggered
+        assert count == 0
 
 
 class TestThermalThrottleDetection(unittest.TestCase):
@@ -396,7 +394,7 @@ class TestThermalThrottleDetection(unittest.TestCase):
         """
         thermal_pressure = "Nominal"
         thermal_throttle = "no" if thermal_pressure == "Nominal" else "yes"
-        self.assertEqual(thermal_throttle, "no")
+        assert thermal_throttle == "no"
 
     def test_thermal_throttle_moderate(self) -> None:
         """
@@ -407,7 +405,7 @@ class TestThermalThrottleDetection(unittest.TestCase):
         """
         thermal_pressure = "Moderate"
         thermal_throttle = "no" if thermal_pressure == "Nominal" else "yes"
-        self.assertEqual(thermal_throttle, "yes")
+        assert thermal_throttle == "yes"
 
     def test_thermal_throttle_heavy(self) -> None:
         """
@@ -418,7 +416,7 @@ class TestThermalThrottleDetection(unittest.TestCase):
         """
         thermal_pressure = "Heavy"
         thermal_throttle = "no" if thermal_pressure == "Nominal" else "yes"
-        self.assertEqual(thermal_throttle, "yes")
+        assert thermal_throttle == "yes"
 
 
 class TestANEUtilizationCalculation(unittest.TestCase):
@@ -435,7 +433,7 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         interval = 1
         ane_max_power = 8.0
         ane_util_percent = int(ane_W / interval / ane_max_power * 100)
-        self.assertEqual(ane_util_percent, 50)
+        assert ane_util_percent == 50
 
     def test_ane_util_calculation_idle(self) -> None:
         """
@@ -447,7 +445,7 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         interval = 1
         ane_max_power = 8.0
         ane_util_percent = int(ane_W / interval / ane_max_power * 100)
-        self.assertEqual(ane_util_percent, 0)
+        assert ane_util_percent == 0
 
     def test_ane_util_calculation_max(self) -> None:
         """
@@ -460,7 +458,7 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         interval = 1
         ane_max_power = 8.0
         ane_util_percent = int(ane_W / interval / ane_max_power * 100)
-        self.assertEqual(ane_util_percent, 100)
+        assert ane_util_percent == 100
 
     def test_ane_util_calculation_different_interval(self) -> None:
         """
@@ -490,8 +488,8 @@ class TestGpuUsageCalculation(unittest.TestCase):
             last_gpu_freq_mhz=None,
         )
 
-        self.assertEqual(gpu_percent, 40)
-        self.assertEqual(freq, 900)
+        assert gpu_percent == 40
+        assert freq == 900
 
     def test_gpu_usage_falls_back_to_power(self) -> None:
         """Use power-derived utilization when active residency is zero."""
@@ -504,8 +502,8 @@ class TestGpuUsageCalculation(unittest.TestCase):
             last_gpu_freq_mhz=500,
         )
 
-        self.assertEqual(gpu_percent, 40)
-        self.assertEqual(freq, 500)
+        assert gpu_percent == 40
+        assert freq == 500
 
     def test_gpu_usage_clamps_to_hundred(self) -> None:
         """Clamp power-derived utilization to 100%."""
@@ -518,8 +516,8 @@ class TestGpuUsageCalculation(unittest.TestCase):
             last_gpu_freq_mhz=None,
         )
 
-        self.assertEqual(gpu_percent, 100)
-        self.assertIsNone(freq)
+        assert gpu_percent == 100
+        assert freq is None
 
     def test_gpu_usage_handles_zero_max_power(self) -> None:
         """Gracefully handle missing GPU max power specs."""
@@ -532,8 +530,8 @@ class TestGpuUsageCalculation(unittest.TestCase):
             last_gpu_freq_mhz=450,
         )
 
-        self.assertEqual(gpu_percent, 0)
-        self.assertEqual(freq, 450)
+        assert gpu_percent == 0
+        assert freq == 450
 
 
 class TestTimestampHandling(unittest.TestCase):
@@ -550,7 +548,7 @@ class TestTimestampHandling(unittest.TestCase):
         current_timestamp = 1001
 
         should_process = current_timestamp > last_timestamp
-        self.assertTrue(should_process)
+        assert should_process
 
     def test_timestamp_no_update(self) -> None:
         """
@@ -563,7 +561,7 @@ class TestTimestampHandling(unittest.TestCase):
         current_timestamp = 1000
 
         should_process = current_timestamp > last_timestamp
-        self.assertFalse(should_process)
+        assert not should_process
 
     def test_timestamp_backwards(self) -> None:
         """
@@ -576,7 +574,7 @@ class TestTimestampHandling(unittest.TestCase):
         current_timestamp = 1000
 
         should_process = current_timestamp > last_timestamp
-        self.assertFalse(should_process)
+        assert not should_process
 
 
 class TestMainLoopEdgeCases(unittest.TestCase):
@@ -604,7 +602,6 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                 patch("asitop.asitop.clear_console"),
                 patch("asitop.asitop.time.sleep"),
             ):
-
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
                     "core_count": 8,
@@ -656,7 +653,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                     pass
 
                 # Verify process was restarted (should be called twice: initial + restart)
-                self.assertGreaterEqual(mock_run_pm.call_count, 2)
+                assert mock_run_pm.call_count >= 2
 
     def test_thermal_pressure_non_nominal(self) -> None:
         """
@@ -679,7 +676,6 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                 patch("asitop.asitop.clear_console"),
                 patch("asitop.asitop.time.sleep"),
             ):
-
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
                     "core_count": 8,
@@ -731,7 +727,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                     pass
 
                 # Test passes if no exceptions were raised
-                self.assertTrue(True)
+                assert True
 
 
 if __name__ == "__main__":

@@ -5,8 +5,8 @@ This module tests all parsing functions that extract metrics from
 powermetrics output, including thermal pressure, bandwidth, CPU, and GPU data.
 """
 
-import unittest
 from typing import Any
+import unittest
 
 
 class TestParseThermalPressure(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestParseThermalPressure(unittest.TestCase):
 
         mock_data: dict[str, str] = {"thermal_pressure": "Nominal"}
         result = parse_thermal_pressure(mock_data)
-        self.assertEqual(result, "Nominal")
+        assert result == "Nominal"
 
     def test_parse_thermal_pressure_moderate(self) -> None:
         """
@@ -35,7 +35,7 @@ class TestParseThermalPressure(unittest.TestCase):
 
         mock_data: dict[str, str] = {"thermal_pressure": "Moderate"}
         result = parse_thermal_pressure(mock_data)
-        self.assertEqual(result, "Moderate")
+        assert result == "Moderate"
 
     def test_parse_thermal_pressure_heavy(self) -> None:
         """
@@ -47,7 +47,7 @@ class TestParseThermalPressure(unittest.TestCase):
 
         mock_data: dict[str, str] = {"thermal_pressure": "Heavy"}
         result = parse_thermal_pressure(mock_data)
-        self.assertEqual(result, "Heavy")
+        assert result == "Heavy"
 
 
 class TestParseBandwidthMetrics(unittest.TestCase):
@@ -70,8 +70,8 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         }
         result = parse_bandwidth_metrics(mock_data)
 
-        self.assertIn("DCS RD", result)
-        self.assertIn("DCS WR", result)
+        assert "DCS RD" in result
+        assert "DCS WR" in result
         self.assertAlmostEqual(result["DCS RD"], 1.0, places=2)
         self.assertAlmostEqual(result["DCS WR"], 2.0, places=2)
 
@@ -150,9 +150,9 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         mock_data: dict[str, Any] = {"bandwidth_counters": []}
         result = parse_bandwidth_metrics(mock_data)
 
-        self.assertEqual(result["DCS RD"], 0)
-        self.assertEqual(result["DCS WR"], 0)
-        self.assertEqual(result["MEDIA DCS"], 0)
+        assert result["DCS RD"] == 0
+        assert result["DCS WR"] == 0
+        assert result["MEDIA DCS"] == 0
 
 
 class TestParseCPUMetrics(unittest.TestCase):
@@ -197,14 +197,14 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        self.assertEqual(result["E-Cluster_freq_Mhz"], 2064)
-        self.assertEqual(result["E-Cluster_active"], 20)
-        self.assertEqual(result["P-Cluster_freq_Mhz"], 3228)
-        self.assertEqual(result["P-Cluster_active"], 70)
-        self.assertIn(0, result["e_core"])
-        self.assertIn(1, result["e_core"])
-        self.assertIn(2, result["p_core"])
-        self.assertIn(3, result["p_core"])
+        assert result["E-Cluster_freq_Mhz"] == 2064
+        assert result["E-Cluster_active"] == 20
+        assert result["P-Cluster_freq_Mhz"] == 3228
+        assert result["P-Cluster_active"] == 70
+        assert 0 in result["e_core"]
+        assert 1 in result["e_core"]
+        assert 2 in result["p_core"]
+        assert 3 in result["p_core"]
 
     def test_parse_cpu_metrics_m1_ultra(self) -> None:
         """
@@ -265,14 +265,14 @@ class TestParseCPUMetrics(unittest.TestCase):
 
         # M1 Ultra averages the dual E-clusters
         # E0: idle 0.5 -> active 50%, E1: idle 0.7 -> active 30%, avg = (50+30)/2 = 40%
-        self.assertEqual(result["E-Cluster_active"], 40)
+        assert result["E-Cluster_active"] == 40
         # M1 Ultra takes max frequency from E-clusters
-        self.assertEqual(result["E-Cluster_freq_Mhz"], 2064)
+        assert result["E-Cluster_freq_Mhz"] == 2064
         # M1 Ultra averages quad P-clusters
         expected_p_active = int((80 + 70 + 60 + 50) / 4)
-        self.assertEqual(result["P-Cluster_active"], expected_p_active)
+        assert result["P-Cluster_active"] == expected_p_active
         # M1 Ultra takes max frequency from P-clusters
-        self.assertEqual(result["P-Cluster_freq_Mhz"], 3300)
+        assert result["P-Cluster_freq_Mhz"] == 3300
 
     def test_parse_cpu_metrics_power(self) -> None:
         """
@@ -296,10 +296,10 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        self.assertEqual(result["ane_W"], 5.0)
-        self.assertEqual(result["cpu_W"], 10.0)
-        self.assertEqual(result["gpu_W"], 8.0)
-        self.assertEqual(result["package_W"], 23.0)
+        assert result["ane_W"] == 5.0
+        assert result["cpu_W"] == 10.0
+        assert result["gpu_W"] == 8.0
+        assert result["package_W"] == 23.0
 
     def test_parse_cpu_metrics_gpu_energy_fallback(self) -> None:
         """
@@ -324,7 +324,7 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        self.assertEqual(result["gpu_W"], 9.0)
+        assert result["gpu_W"] == 9.0
 
     def test_parse_cpu_metrics_gpu_energy_prefers_gpu_sampler(self) -> None:
         """
@@ -348,7 +348,7 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        self.assertEqual(result["gpu_W"], 10.0)
+        assert result["gpu_W"] == 10.0
 
     def test_parse_cpu_metrics_individual_cores(self) -> None:
         """
@@ -380,10 +380,10 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        self.assertEqual(result["P-Cluster0_freq_Mhz"], 2800)
-        self.assertEqual(result["P-Cluster0_active"], 70)
-        self.assertEqual(result["P-Cluster1_freq_Mhz"], 3200)
-        self.assertEqual(result["P-Cluster1_active"], 30)
+        assert result["P-Cluster0_freq_Mhz"] == 2800
+        assert result["P-Cluster0_active"] == 70
+        assert result["P-Cluster1_freq_Mhz"] == 3200
+        assert result["P-Cluster1_active"] == 30
 
 
 class TestParseGPUMetrics(unittest.TestCase):
@@ -406,8 +406,8 @@ class TestParseGPUMetrics(unittest.TestCase):
         }
         result = parse_gpu_metrics(mock_data)
 
-        self.assertEqual(result["freq_MHz"], 1296)  # 1296 MHz = 1296000000 Hz
-        self.assertEqual(result["active"], 75)
+        assert result["freq_MHz"] == 1296  # 1296 MHz = 1296000000 Hz
+        assert result["active"] == 75
 
     def test_parse_gpu_metrics_idle(self) -> None:
         """
@@ -425,8 +425,8 @@ class TestParseGPUMetrics(unittest.TestCase):
         }
         result = parse_gpu_metrics(mock_data)
 
-        self.assertEqual(result["freq_MHz"], 0)
-        self.assertEqual(result["active"], 0)
+        assert result["freq_MHz"] == 0
+        assert result["active"] == 0
 
     def test_parse_gpu_metrics_full_load(self) -> None:
         """
@@ -445,8 +445,8 @@ class TestParseGPUMetrics(unittest.TestCase):
         }
         result = parse_gpu_metrics(mock_data)
 
-        self.assertEqual(result["freq_MHz"], 1398)  # 1398 MHz = 1398000000 Hz
-        self.assertEqual(result["active"], 100)
+        assert result["freq_MHz"] == 1398  # 1398 MHz = 1398000000 Hz
+        assert result["active"] == 100
 
     def test_parse_gpu_metrics_freq_in_mhz(self) -> None:
         """
@@ -469,8 +469,8 @@ class TestParseGPUMetrics(unittest.TestCase):
         }
         result = parse_gpu_metrics(mock_data)
 
-        self.assertEqual(result["freq_MHz"], 777)
-        self.assertEqual(result["active"], 60)
+        assert result["freq_MHz"] == 777
+        assert result["active"] == 60
 
 
 class TestParseCPUMetricsEdgeCases(unittest.TestCase):
@@ -510,9 +510,9 @@ class TestParseCPUMetricsEdgeCases(unittest.TestCase):
         result = parse_cpu_metrics(mock_data)
 
         # Should average dual P-clusters
-        self.assertEqual(result["P-Cluster_active"], int((80 + 60) / 2))
+        assert result["P-Cluster_active"] == int((80 + 60) / 2)
         # Should take max frequency
-        self.assertEqual(result["P-Cluster_freq_Mhz"], 3100)
+        assert result["P-Cluster_freq_Mhz"] == 3100
 
 
 class TestParseBandwidthMetricsExtended(unittest.TestCase):

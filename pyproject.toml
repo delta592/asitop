@@ -108,50 +108,155 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+# Preview mode enables upcoming rule improvements and modern best practices
+preview = true
+# Show fix availability for all violations
+show-fixes = true
+# Fail on unfixable violations to maintain strict standards
+force-exclude = true
 
 [tool.ruff.lint]
-# Enable rule sets that cover flake8 and pylint functionality
+# Comprehensive, strict rule selection following modern Python best practices
 select = [
-    "E",      # pycodestyle errors (flake8)
-    "W",      # pycodestyle warnings (flake8)
-    "F",      # pyflakes (flake8)
-    "I",      # isort
-    "N",      # pep8-naming
-    "UP",     # pyupgrade
-    "B",      # flake8-bugbear
-    "C4",     # flake8-comprehensions
-    "SIM",    # flake8-simplify
-    "PL",     # pylint rules
-    "RUF",    # Ruff-specific rules
+    "ALL",    # Enable all rules by default, then selectively ignore
 ]
 
-# Ignore specific rules that match previous pylint disables
+# Strategic ignores for practical development while maintaining high standards
 ignore = [
-    "PLR0913", # Too many arguments
-    "PLR2004", # Magic value used in comparison
-    "SIM108",  # Use ternary operator (can reduce readability)
-    "F403",    # Star imports used in utils pattern
+    # Documentation (opt-in basis - enable D when you want full docstring coverage)
+    "D",       # pydocstyle - documentation
+    "DOC",     # pydoclint - docstring parameter documentation
+
+    # Complexity metrics (customized below in pylint section)
+    "PLR0913", # Too many arguments - configurable limit below
+    "PLR2004", # Magic value in comparison - acceptable for constants
+    "PLR0912", # Too many branches - allowed for main logic files
+    "PLR0915", # Too many statements - allowed for main logic files
+    "PLR0914", # Too many local variables - allowed for complex functions
+    "C901",    # Function too complex - using McCabe setting instead
+
+    # Code style preferences
+    "SIM108",  # Use ternary operator - can reduce readability
+    "COM812",  # Trailing comma missing - conflicts with formatter
+    "ISC001",  # Implicit string concatenation - conflicts with formatter
+    "ERA001",  # Commented-out code - sometimes useful during development
+
+    # Import patterns
+    "F403",    # Star imports - used intentionally in utils
     "F405",    # May be undefined from star imports
+    "TID252",  # Relative imports - allow for package structure
+
+    # Controversial or overly strict rules
+    "FBT001",  # Boolean positional arg - acceptable in CLI tools
+    "FBT002",  # Boolean default arg - acceptable in CLI tools
+    "TD002",   # Missing TODO author - not required
+    "TD003",   # Missing TODO link - not required
+    "FIX002",  # TODO comments - allowed during development
+
+    # Performance (profile before optimizing)
+    "PERF203", # try-except in loop - acceptable for error handling
+
+    # Legal/copyright
+    "CPY001",  # Missing copyright notice - not required for all projects
+
+    # Security (be selective about what to allow)
+    "S404",    # subprocess import - needed for this tool
+    "S603",    # subprocess without shell=True check - we control inputs
+    "S607",    # Partial executable path - acceptable for system tools
+    "S108",    # Hardcoded temp directory - standard for this tool
+    "S112",    # try-except-continue - acceptable for parsing loops
+    "BLE001",  # Blind except Exception - acceptable for cleanup handlers
+
+    # Exception handling patterns
+    "TRY300",  # Consider moving to else block - style preference
+
+    # Path operations
+    "PTH207",  # Use Path.glob - glob.glob is acceptable
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Allow unused imports in __init__.py files
-"__init__.py" = ["F401"]
-# Tests can use assert statements, have longer functions, and use imports inside functions
-# Also allow unused variables, try-except-pass patterns, and naming conventions in tests
-"tests/*" = ["PLR2004", "PLR0915", "PLC0415", "F841", "SIM105", "N806", "RUF059"]
-# Main module can have more complexity
-"asitop/asitop.py" = ["PLR0912", "PLR0915"]
+# __init__.py files
+"__init__.py" = [
+    "F401",    # Unused import - expected in __init__.py
+    "F403",    # Star import - expected in __init__.py
+    "D104",    # Missing docstring in public package
+]
+
+# Test files get more flexibility
+"tests/*" = [
+    "S101",    # Use of assert - required for pytest
+    "S108",    # Hardcoded temp directory - acceptable in tests
+    "PLR2004", # Magic values - acceptable in test data
+    "PLR0915", # Too many statements - tests can be long
+    "PLR6301", # Method could be function/staticmethod - unittest requires self
+    "PLC0415", # Import outside top-level - needed for fixtures
+    "F841",    # Unused variable - acceptable in test setup
+    "SIM105",  # Use contextlib.suppress - try/pass is clearer in tests
+    "N806",    # Non-lowercase variable - test data varies
+    "RUF059",  # Function call in dataclass defaults
+    "PT009",   # Use pytest-style assertions - using unittest for now
+    "ANN",     # Type annotations - optional in tests
+    "D",       # Docstrings - optional in tests
+    "ARG001",  # Unused function argument - pytest fixtures
+    "ARG002",  # Unused method argument - pytest fixtures
+]
+
+# Main module can have more complexity due to CLI nature
+"asitop/asitop.py" = [
+    "PLR0912", # Too many branches - main CLI logic
+    "PLR0915", # Too many statements - main CLI logic
+    "PLR1702", # Too many nested blocks - main event loop
+    "T201",    # print statements - CLI tool uses print
+]
 
 [tool.ruff.lint.pylint]
-# Match previous pylint max-line-length
-max-args = 7
-max-branches = 15
-max-returns = 6
-max-statements = 50
+# Balanced complexity limits - strict but practical
+max-args = 7           # Maximum function arguments
+max-branches = 15      # Maximum branches in function
+max-returns = 6        # Maximum return statements
+max-statements = 50    # Maximum statements in function
+max-public-methods = 20
 
 [tool.ruff.lint.isort]
 known-first-party = ["asitop"]
+# Modern import sorting configuration
+force-single-line = false
+force-sort-within-sections = true
+lines-after-imports = 2
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Extend immutable calls for better immutability checks
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
+[tool.ruff.lint.flake8-type-checking]
+# Move type-checking only imports into TYPE_CHECKING blocks
+strict = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Ban relative imports for better maintainability
+ban-relative-imports = "all"
+
+[tool.ruff.lint.pyupgrade]
+# Keep runtime typing for Python 3.10+
+keep-runtime-typing = true
+
+[tool.ruff.lint.mccabe]
+# Maximum allowed complexity (lower is stricter)
+max-complexity = 15
+
+[tool.ruff.lint.pep8-naming]
+# Enforce PEP 8 naming conventions strictly
+classmethod-decorators = ["classmethod"]
+
+[tool.ruff.format]
+# Modern formatter configuration
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
 
 [tool.black]
 line-length = 100

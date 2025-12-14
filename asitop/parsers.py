@@ -222,7 +222,7 @@ def parse_cpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, Any]:
     # always gets a usable value.
     gpu_energy_proc = cpu_metrics.get("gpu_energy")
     gpu_energy_gpu = powermetrics_parse.get("gpu", {}).get("gpu_energy")
-    gpu_energy = gpu_energy_gpu if gpu_energy_gpu not in (None, 0) else gpu_energy_proc
+    gpu_energy = gpu_energy_gpu if gpu_energy_gpu not in {None, 0} else gpu_energy_proc
     gpu_energy = gpu_energy or 0
 
     cpu_metric_dict["cpu_W"] = cpu_metrics["cpu_energy"] / 1000
@@ -268,8 +268,7 @@ def parse_gpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, int]:
 
     active_percent = int((1 - gpu_metrics.get("idle_ratio", 0)) * 100)
     active_percent = max(0, min(active_percent, 100))
-    gpu_metrics_dict = {
+    return {
         "freq_MHz": freq_mhz,
         "active": active_percent,
     }
-    return gpu_metrics_dict

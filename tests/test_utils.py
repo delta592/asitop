@@ -5,11 +5,11 @@ This module tests utility functions including powermetrics parsing,
 RAM metrics collection, SOC information gathering, and file operations.
 """
 
-import os
+import pathlib
 import plistlib
 import tempfile
-import unittest
 from typing import Any
+import unittest
 from unittest.mock import MagicMock, patch
 
 
@@ -27,7 +27,7 @@ class TestConvertToGB(unittest.TestCase):
 
         bytes_value = 1073741824
         result = convert_to_gb(bytes_value)
-        self.assertEqual(result, 1.0)
+        assert result == 1.0
 
     def test_convert_to_gb_zero(self) -> None:
         """
@@ -38,7 +38,7 @@ class TestConvertToGB(unittest.TestCase):
         from asitop.utils import convert_to_gb
 
         result = convert_to_gb(0)
-        self.assertEqual(result, 0.0)
+        assert result == 0.0
 
     def test_convert_to_gb_large_value(self) -> None:
         """
@@ -50,7 +50,7 @@ class TestConvertToGB(unittest.TestCase):
 
         bytes_value = 68719476736
         result = convert_to_gb(bytes_value)
-        self.assertEqual(result, 64.0)
+        assert result == 64.0
 
     def test_convert_to_gb_fractional(self) -> None:
         """
@@ -120,17 +120,17 @@ class TestParsePowermetrics(unittest.TestCase):
                 # Parse the file directly using the full path as base_path and empty timecode
                 result = parse_powermetrics(path=tf.name, timecode="")
 
-                self.assertIsNotNone(result)
-                self.assertIsInstance(result, tuple)
-                self.assertEqual(len(result), 5)
+                assert result is not None
+                assert isinstance(result, tuple)
+                assert len(result) == 5
 
                 cpu_metrics, gpu_metrics, thermal, bandwidth, timestamp = result
-                self.assertEqual(thermal, "Nominal")
-                self.assertEqual(timestamp, 1234567890)
-                self.assertIsNotNone(cpu_metrics)
-                self.assertIsNotNone(gpu_metrics)
+                assert thermal == "Nominal"
+                assert timestamp == 1234567890
+                assert cpu_metrics is not None
+                assert gpu_metrics is not None
             finally:
-                os.unlink(tf.name)
+                pathlib.Path(tf.name).unlink()
 
     def test_parse_powermetrics_file_not_found(self) -> None:
         """
@@ -142,7 +142,7 @@ class TestParsePowermetrics(unittest.TestCase):
         from asitop.utils import parse_powermetrics
 
         result = parse_powermetrics(path="/nonexistent/path", timecode="test")
-        self.assertFalse(result)
+        assert not result
 
     def test_parse_powermetrics_multiple_entries(self) -> None:
         """
@@ -193,12 +193,12 @@ class TestParsePowermetrics(unittest.TestCase):
                 # Parse the file directly using the full path as base_path and empty timecode
                 result = parse_powermetrics(path=tf.name, timecode="")
 
-                self.assertIsNotNone(result)
+                assert result is not None
                 _, _, thermal, _, timestamp = result
-                self.assertEqual(timestamp, 2000)
-                self.assertEqual(thermal, "Moderate")
+                assert timestamp == 2000
+                assert thermal == "Moderate"
             finally:
-                os.unlink(tf.name)
+                pathlib.Path(tf.name).unlink()
 
 
 class TestGetRamMetricsDict(unittest.TestCase):
@@ -226,12 +226,12 @@ class TestGetRamMetricsDict(unittest.TestCase):
 
         result = get_ram_metrics_dict()
 
-        self.assertEqual(result["total_GB"], 16.0)
-        self.assertEqual(result["free_GB"], 8.0)
-        self.assertEqual(result["used_GB"], 8.0)
-        self.assertEqual(result["free_percent"], 50)
-        self.assertEqual(result["swap_total_GB"], 2.0)
-        self.assertEqual(result["swap_used_GB"], 1.0)
+        assert result["total_GB"] == 16.0
+        assert result["free_GB"] == 8.0
+        assert result["used_GB"] == 8.0
+        assert result["free_percent"] == 50
+        assert result["swap_total_GB"] == 2.0
+        assert result["swap_used_GB"] == 1.0
 
     @patch("psutil.virtual_memory")
     @patch("psutil.swap_memory")
@@ -255,8 +255,8 @@ class TestGetRamMetricsDict(unittest.TestCase):
 
         result = get_ram_metrics_dict()
 
-        self.assertEqual(result["swap_total_GB"], 0.0)
-        self.assertIsNone(result["swap_free_percent"])
+        assert result["swap_total_GB"] == 0.0
+        assert result["swap_free_percent"] is None
 
     @patch("psutil.virtual_memory")
     @patch("psutil.swap_memory")
@@ -280,8 +280,8 @@ class TestGetRamMetricsDict(unittest.TestCase):
 
         result = get_ram_metrics_dict()
 
-        self.assertGreater(result["free_percent"], 98)
-        self.assertLess(result["free_percent"], 100)
+        assert result["free_percent"] > 98
+        assert result["free_percent"] < 100
 
 
 class TestGetCPUInfo(unittest.TestCase):
@@ -306,8 +306,8 @@ class TestGetCPUInfo(unittest.TestCase):
 
         result = get_cpu_info()
 
-        self.assertEqual(result["machdep.cpu.brand_string"], "Apple M1")
-        self.assertEqual(result["machdep.cpu.core_count"], "8")
+        assert result["machdep.cpu.brand_string"] == "Apple M1"
+        assert result["machdep.cpu.core_count"] == "8"
 
     @patch("subprocess.run")
     def test_get_cpu_info_m1_max(self, mock_run: MagicMock) -> None:
@@ -318,13 +318,13 @@ class TestGetCPUInfo(unittest.TestCase):
         """
         from asitop.utils import get_cpu_info
 
-        mock_output = "machdep.cpu.brand_string: Apple M1 Max\n" "machdep.cpu.core_count: 10\n"
+        mock_output = "machdep.cpu.brand_string: Apple M1 Max\nmachdep.cpu.core_count: 10\n"
         mock_run.return_value.stdout = mock_output
 
         result = get_cpu_info()
 
-        self.assertEqual(result["machdep.cpu.brand_string"], "Apple M1 Max")
-        self.assertEqual(result["machdep.cpu.core_count"], "10")
+        assert result["machdep.cpu.brand_string"] == "Apple M1 Max"
+        assert result["machdep.cpu.core_count"] == "10"
 
 
 class TestGetCoreCounts(unittest.TestCase):
@@ -341,16 +341,14 @@ class TestGetCoreCounts(unittest.TestCase):
         from asitop.utils import get_core_counts
 
         mock_output = (
-            "hw.perflevel0.logicalcpu: 6\n"
-            "hw.perflevel1.logicalcpu: 2\n"
-            "hw.perflevel0.name: P-Core\n"
+            "hw.perflevel0.logicalcpu: 6\nhw.perflevel1.logicalcpu: 2\nhw.perflevel0.name: P-Core\n"
         )
         mock_run.return_value.stdout = mock_output
 
         result = get_core_counts()
 
-        self.assertEqual(result["hw.perflevel0.logicalcpu"], 6)
-        self.assertEqual(result["hw.perflevel1.logicalcpu"], 2)
+        assert result["hw.perflevel0.logicalcpu"] == 6
+        assert result["hw.perflevel1.logicalcpu"] == 2
 
     @patch("subprocess.run")
     def test_get_core_counts_m1_ultra(self, mock_run: MagicMock) -> None:
@@ -362,13 +360,13 @@ class TestGetCoreCounts(unittest.TestCase):
         """
         from asitop.utils import get_core_counts
 
-        mock_output = "hw.perflevel0.logicalcpu: 16\n" "hw.perflevel1.logicalcpu: 4\n"
+        mock_output = "hw.perflevel0.logicalcpu: 16\nhw.perflevel1.logicalcpu: 4\n"
         mock_run.return_value.stdout = mock_output
 
         result = get_core_counts()
 
-        self.assertEqual(result["hw.perflevel0.logicalcpu"], 16)
-        self.assertEqual(result["hw.perflevel1.logicalcpu"], 4)
+        assert result["hw.perflevel0.logicalcpu"] == 16
+        assert result["hw.perflevel1.logicalcpu"] == 4
 
 
 class TestGetGPUCores(unittest.TestCase):
@@ -389,7 +387,7 @@ class TestGetGPUCores(unittest.TestCase):
 
         result = get_gpu_cores()
 
-        self.assertEqual(result, 8)
+        assert result == 8
 
     @patch("subprocess.run")
     def test_get_gpu_cores_high_count(self, mock_run: MagicMock) -> None:
@@ -406,7 +404,7 @@ class TestGetGPUCores(unittest.TestCase):
 
         result = get_gpu_cores()
 
-        self.assertEqual(result, 32)
+        assert result == 32
 
     @patch("subprocess.run")
     def test_get_gpu_cores_parse_error(self, mock_run: MagicMock) -> None:
@@ -423,7 +421,7 @@ class TestGetGPUCores(unittest.TestCase):
 
         result = get_gpu_cores()
 
-        self.assertEqual(result, "?")
+        assert result == "?"
 
 
 class TestGetSOCInfo(unittest.TestCase):
@@ -455,15 +453,15 @@ class TestGetSOCInfo(unittest.TestCase):
 
         result = get_soc_info()
 
-        self.assertEqual(result["name"], "Apple M1")
-        self.assertEqual(result["core_count"], 8)
-        self.assertEqual(result["e_core_count"], 4)
-        self.assertEqual(result["p_core_count"], 4)
-        self.assertEqual(result["gpu_core_count"], 8)
-        self.assertEqual(result["cpu_max_power"], 20)
-        self.assertEqual(result["gpu_max_power"], 20)
-        self.assertEqual(result["cpu_max_bw"], 70)
-        self.assertEqual(result["gpu_max_bw"], 70)
+        assert result["name"] == "Apple M1"
+        assert result["core_count"] == 8
+        assert result["e_core_count"] == 4
+        assert result["p_core_count"] == 4
+        assert result["gpu_core_count"] == 8
+        assert result["cpu_max_power"] == 20
+        assert result["gpu_max_power"] == 20
+        assert result["cpu_max_bw"] == 70
+        assert result["gpu_max_bw"] == 70
 
     @patch("asitop.utils.get_gpu_cores")
     @patch("asitop.utils.get_core_counts")
@@ -490,11 +488,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         result = get_soc_info()
 
-        self.assertEqual(result["name"], "Apple M1 Max")
-        self.assertEqual(result["cpu_max_power"], 30)
-        self.assertEqual(result["gpu_max_power"], 60)
-        self.assertEqual(result["cpu_max_bw"], 250)
-        self.assertEqual(result["gpu_max_bw"], 400)
+        assert result["name"] == "Apple M1 Max"
+        assert result["cpu_max_power"] == 30
+        assert result["gpu_max_power"] == 60
+        assert result["cpu_max_bw"] == 250
+        assert result["gpu_max_bw"] == 400
 
     @patch("asitop.utils.get_gpu_cores")
     @patch("asitop.utils.get_core_counts")
@@ -521,11 +519,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         result = get_soc_info()
 
-        self.assertEqual(result["name"], "Apple M1 Ultra")
-        self.assertEqual(result["cpu_max_power"], 60)
-        self.assertEqual(result["gpu_max_power"], 120)
-        self.assertEqual(result["cpu_max_bw"], 500)
-        self.assertEqual(result["gpu_max_bw"], 800)
+        assert result["name"] == "Apple M1 Ultra"
+        assert result["cpu_max_power"] == 60
+        assert result["gpu_max_power"] == 120
+        assert result["cpu_max_bw"] == 500
+        assert result["gpu_max_bw"] == 800
 
     @patch("asitop.utils.get_gpu_cores")
     @patch("asitop.utils.get_core_counts")
@@ -552,11 +550,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         result = get_soc_info()
 
-        self.assertEqual(result["name"], "Apple M2")
-        self.assertEqual(result["cpu_max_power"], 25)
-        self.assertEqual(result["gpu_max_power"], 15)
-        self.assertEqual(result["cpu_max_bw"], 100)
-        self.assertEqual(result["gpu_max_bw"], 100)
+        assert result["name"] == "Apple M2"
+        assert result["cpu_max_power"] == 25
+        assert result["gpu_max_power"] == 15
+        assert result["cpu_max_bw"] == 100
+        assert result["gpu_max_bw"] == 100
 
     @patch("asitop.utils.get_gpu_cores")
     @patch("asitop.utils.get_core_counts")
@@ -585,10 +583,10 @@ class TestGetSOCInfo(unittest.TestCase):
         result = get_soc_info()
 
         # Should use default values for unknown chips
-        self.assertEqual(result["cpu_max_power"], 20)
-        self.assertEqual(result["gpu_max_power"], 20)
-        self.assertEqual(result["cpu_max_bw"], 70)
-        self.assertEqual(result["gpu_max_bw"], 70)
+        assert result["cpu_max_power"] == 20
+        assert result["gpu_max_power"] == 20
+        assert result["cpu_max_bw"] == 70
+        assert result["gpu_max_bw"] == 70
 
     @patch("asitop.utils.get_gpu_cores")
     @patch("asitop.utils.get_core_counts")
@@ -613,8 +611,8 @@ class TestGetSOCInfo(unittest.TestCase):
 
         result = get_soc_info()
 
-        self.assertEqual(result["e_core_count"], "?")
-        self.assertEqual(result["p_core_count"], "?")
+        assert result["e_core_count"] == "?"
+        assert result["p_core_count"] == "?"
 
 
 class TestRunPowermetricsProcess(unittest.TestCase):
@@ -640,18 +638,18 @@ class TestRunPowermetricsProcess(unittest.TestCase):
 
         result = run_powermetrics_process(timecode="123", nice=10, interval=1000)
 
-        self.assertEqual(result, mock_process)
+        assert result == mock_process
         mock_popen.assert_called_once()
         call_args = mock_popen.call_args[0][0]
-        self.assertIn("powermetrics", call_args)
-        self.assertIn("--samplers", call_args)
-        self.assertIn("cpu_power,gpu_power,thermal", call_args)
+        assert "powermetrics" in call_args
+        assert "--samplers" in call_args
+        assert "cpu_power,gpu_power,thermal" in call_args
 
     @patch("glob.glob")
-    @patch("os.remove")
+    @patch("pathlib.Path.unlink")
     @patch("subprocess.Popen")
     def test_run_powermetrics_process_cleanup(
-        self, mock_popen: MagicMock, mock_remove: MagicMock, mock_glob: MagicMock
+        self, mock_popen: MagicMock, mock_unlink: MagicMock, mock_glob: MagicMock
     ) -> None:
         """
         Test that old powermetrics files are cleaned up.
@@ -667,9 +665,9 @@ class TestRunPowermetricsProcess(unittest.TestCase):
 
         run_powermetrics_process(timecode="789")
 
-        self.assertEqual(mock_remove.call_count, len(old_files))
-        for old_file in old_files:
-            mock_remove.assert_any_call(old_file)
+        assert mock_unlink.call_count == len(old_files)
+        # Verify unlink was called with missing_ok=True
+        mock_unlink.assert_called_with(missing_ok=True)
 
     @patch("glob.glob")
     @patch("os.remove")
@@ -691,7 +689,7 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         run_powermetrics_process(timecode="123", interval=5000)
 
         call_args = mock_popen.call_args[0][0]
-        self.assertIn("5000", call_args)
+        assert "5000" in call_args
 
 
 class TestParsePowermetricsErrors(unittest.TestCase):
@@ -704,7 +702,6 @@ class TestParsePowermetricsErrors(unittest.TestCase):
         Ensures function returns False when all plist entries
         in the file are corrupted or invalid.
         """
-        import os
         import tempfile
 
         from asitop.utils import parse_powermetrics
@@ -720,9 +717,9 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
                 result = parse_powermetrics(path=tf.name, timecode="")
 
-                self.assertFalse(result)
+                assert not result
             finally:
-                os.unlink(tf.name)
+                pathlib.Path(tf.name).unlink()
 
     def test_parse_powermetrics_empty_parts(self) -> None:
         """
@@ -730,7 +727,6 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
         Edge case: File has null bytes but no valid plist data.
         """
-        import os
         import tempfile
 
         from asitop.utils import parse_powermetrics
@@ -743,9 +739,9 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
                 result = parse_powermetrics(path=tf.name, timecode="")
 
-                self.assertFalse(result)
+                assert not result
             finally:
-                os.unlink(tf.name)
+                pathlib.Path(tf.name).unlink()
 
     def test_parse_powermetrics_partial_valid_data(self) -> None:
         """
@@ -754,7 +750,6 @@ class TestParsePowermetricsErrors(unittest.TestCase):
         Verifies function skips corrupted entries and successfully
         parses the first valid one it finds.
         """
-        import os
         import plistlib
         import tempfile
 
@@ -786,13 +781,13 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
                 result = parse_powermetrics(path=tf.name, timecode="")
 
-                self.assertIsNotNone(result)
-                self.assertIsInstance(result, tuple)
+                assert result is not None
+                assert isinstance(result, tuple)
                 _, _, thermal, _, timestamp = result
-                self.assertEqual(timestamp, 9999)
-                self.assertEqual(thermal, "Heavy")
+                assert timestamp == 9999
+                assert thermal == "Heavy"
             finally:
-                os.unlink(tf.name)
+                pathlib.Path(tf.name).unlink()
 
 
 if __name__ == "__main__":

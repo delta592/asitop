@@ -1,8 +1,8 @@
 import argparse
+from collections import deque
 import math
 import subprocess
 import time
-from collections import deque
 from typing import Any
 
 from dashing import HChart, HGauge, HSplit, VGauge, VSplit
@@ -226,12 +226,11 @@ def main() -> subprocess.Popen[bytes]:
     last_timestamp = ready[-1]
 
     def get_avg(inlist: deque[float]) -> float:
-        avg = sum(inlist) / len(inlist)
-        return avg
+        return sum(inlist) / len(inlist)
 
-    avg_package_power_list: deque[float] = deque([], maxlen=int(args.avg / args.interval))
-    avg_cpu_power_list: deque[float] = deque([], maxlen=int(args.avg / args.interval))
-    avg_gpu_power_list: deque[float] = deque([], maxlen=int(args.avg / args.interval))
+    avg_package_power_list: deque[float] = deque(maxlen=int(args.avg / args.interval))
+    avg_cpu_power_list: deque[float] = deque(maxlen=int(args.avg / args.interval))
+    avg_gpu_power_list: deque[float] = deque(maxlen=int(args.avg / args.interval))
 
     clear_console()
 
