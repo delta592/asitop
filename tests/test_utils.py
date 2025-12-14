@@ -756,5 +756,106 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         self.assertIn("5000", call_args)
 
 
+class TestParsePowermetricsErrors(unittest.TestCase):
+    """Test error handling in parse_powermetrics function."""
+
+    def test_parse_powermetrics_corrupted_plist(self) -> None:
+        """
+        Test parsing when plist data is corrupted.
+
+        Ensures function returns False when all plist entries
+        in the file are corrupted or invalid.
+        """
+        from asitop.utils import parse_powermetrics
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+            try:
+                # Write invalid plist data
+                tf.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
+                tf.write(b'<plist>\n')
+                tf.write(b'<dict>\n')
+                tf.write(b'CORRUPTED DATA HERE\n')
+                tf.flush()
+
+                result = parse_powermetrics(path=tf.name, timecode='')
+
+                self.assertFalse(result)
+            finally:
+                os.unlink(tf.name)
+
+    def test_parse_powermetrics_empty_parts(self) -> None:
+        """
+        Test parsing when file contains only empty null-separated parts.
+
+        Edge case: File has null bytes but no valid plist data.
+        """
+        from asitop.utils import parse_powermetrics
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+            try:
+                # Write only null bytes
+                tf.write(b'\x00\x00\x00\x00')
+                tf.flush()
+
+                result = parse_powermetrics(path=tf.name, timecode='')
+
+                self.assertFalse(result)
+            finally:
+                os.unlink(tf.name)
+
+    def test_parse_powermetrics_partial_valid_data(self) -> None:
+        """
+        Test parsing with mixture of corrupted and valid plist entries.
+
+        Verifies function skips corrupted entries and successfully
+        parses the first valid one it finds.
+        """
+        from asitop.utils import parse_powermetrics
+        import plistlib
+        import tempfile
+        import os
+
+        mock_plist_data: Dict[str, Any] = {
+            "timestamp": 9999,
+            "thermal_pressure": "Heavy",
+            "processor": {
+                "clusters": [{
+                    "name": "E-Cluster",
+                    "freq_hz": 2500000000,
+                    "idle_ratio": 0.3,
+                    "cpus": []
+                }],
+                "ane_energy": 3000,
+                "cpu_energy": 7000,
+                "gpu_energy": 5000,
+                "combined_power": 15000,
+            },
+            "gpu": {"freq_hz": 1400000000, "idle_ratio": 0.1}
+        }
+
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+            try:
+                # Write corrupted data first
+                tf.write(b'CORRUPTED')
+                tf.write(b'\x00')
+                # Then write valid plist
+                plistlib.dump(mock_plist_data, tf)
+                tf.flush()
+
+                result = parse_powermetrics(path=tf.name, timecode='')
+
+                self.assertIsNotNone(result)
+                self.assertIsInstance(result, tuple)
+                _, _, thermal, _, timestamp = result
+                self.assertEqual(timestamp, 9999)
+                self.assertEqual(thermal, "Heavy")
+            finally:
+                os.unlink(tf.name)
+
+
 if __name__ == '__main__':
     unittest.main()

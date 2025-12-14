@@ -405,5 +405,94 @@ class TestParseGPUMetrics(unittest.TestCase):
         self.assertEqual(result["active"], 100)
 
 
+class TestParseCPUMetricsEdgeCases(unittest.TestCase):
+    """Test edge cases for parse_cpu_metrics function."""
+
+    def test_parse_cpu_metrics_dual_p_cluster(self) -> None:
+        """
+        Test parsing CPU metrics with dual P-clusters (M1 Ultra 2P variant).
+
+        Validates correct averaging for systems with P0 and P1 clusters
+        but no P2/P3 clusters.
+        """
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: Dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {
+                        "name": "P0-Cluster",
+                        "freq_hz": 3000000000,
+                        "idle_ratio": 0.2,
+                        "cpus": [{"cpu": 0, "freq_hz": 3000000000, "idle_ratio": 0.2}]
+                    },
+                    {
+                        "name": "P1-Cluster",
+                        "freq_hz": 3100000000,
+                        "idle_ratio": 0.4,
+                        "cpus": [{"cpu": 1, "freq_hz": 3100000000, "idle_ratio": 0.4}]
+                    }
+                ],
+                "ane_energy": 1000,
+                "cpu_energy": 5000,
+                "gpu_energy": 3000,
+                "combined_power": 9000,
+            }
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        # Should average dual P-clusters
+        self.assertEqual(result["P-Cluster_active"], int((80 + 60) / 2))
+        # Should take max frequency
+        self.assertEqual(result["P-Cluster_freq_Mhz"], 3100)
+
+
+class TestParseBandwidthMetricsExtended(unittest.TestCase):
+    """Extended test cases for parse_bandwidth_metrics function."""
+
+    def test_parse_bandwidth_metrics_all_fields(self) -> None:
+        """
+        Test bandwidth parsing with all possible fields populated.
+
+        Ensures all bandwidth counter types are correctly parsed
+        and aggregated including JPEG, ProRes, and STRM CODEC.
+        """
+        from asitop.parsers import parse_bandwidth_metrics
+
+        mock_data: Dict[str, Any] = {
+            "bandwidth_counters": [
+                {"name": "DCS RD", "value": 1000000000},
+                {"name": "DCS WR", "value": 2000000000},
+                {"name": "PCPU0 DCS RD", "value": 500000000},
+                {"name": "PCPU1 DCS RD", "value": 600000000},
+                {"name": "PCPU0 DCS WR", "value": 300000000},
+                {"name": "PCPU1 DCS WR", "value": 400000000},
+                {"name": "GFX DCS RD", "value": 3000000000},
+                {"name": "GFX DCS WR", "value": 2500000000},
+                {"name": "ISP DCS RD", "value": 100000000},
+                {"name": "ISP DCS WR", "value": 150000000},
+                {"name": "VDEC DCS RD", "value": 200000000},
+                {"name": "VDEC DCS WR", "value": 250000000},
+                {"name": "VENC DCS RD", "value": 300000000},
+                {"name": "VENC DCS WR", "value": 350000000},
+                {"name": "JPG DCS RD", "value": 50000000},
+                {"name": "JPG DCS WR", "value": 75000000},
+            ]
+        }
+        result = parse_bandwidth_metrics(mock_data)
+
+        # Check all fields are present and correct
+        self.assertAlmostEqual(result["DCS RD"], 1.0, places=2)
+        self.assertAlmostEqual(result["DCS WR"], 2.0, places=2)
+        self.assertAlmostEqual(result["PCPU DCS RD"], 1.1, places=2)
+        self.assertAlmostEqual(result["PCPU DCS WR"], 0.7, places=2)
+        self.assertAlmostEqual(result["GFX DCS RD"], 3.0, places=2)
+        self.assertAlmostEqual(result["GFX DCS WR"], 2.5, places=2)
+
+        # Check media aggregation
+        expected_media = (0.1 + 0.15 + 0.2 + 0.25 + 0.3 + 0.35 + 0.05 + 0.075)
+        self.assertAlmostEqual(result["MEDIA DCS"], expected_media, places=2)
+
+
 if __name__ == '__main__':
     unittest.main()
