@@ -1,10 +1,30 @@
-def parse_thermal_pressure(powermetrics_parse):
-    return powermetrics_parse["thermal_pressure"]
+from typing import Any
 
 
-def parse_bandwidth_metrics(powermetrics_parse):
+def parse_thermal_pressure(powermetrics_parse: dict[str, Any]) -> str:
+    """Parse thermal pressure from powermetrics data.
+
+    Args:
+        powermetrics_parse: Parsed powermetrics plist dictionary
+
+    Returns:
+        Thermal pressure status string
+    """
+    thermal_pressure: str = powermetrics_parse["thermal_pressure"]
+    return thermal_pressure
+
+
+def parse_bandwidth_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, float]:
+    """Parse memory bandwidth metrics from powermetrics data.
+
+    Args:
+        powermetrics_parse: Parsed powermetrics plist dictionary
+
+    Returns:
+        Dictionary with bandwidth metrics in GB/s
+    """
     bandwidth_metrics = powermetrics_parse["bandwidth_counters"]
-    bandwidth_metrics_dict = {}
+    bandwidth_metrics_dict: dict[str, float] = {}
     data_fields = [
         "PCPU0 DCS RD",
         "PCPU0 DCS WR",
@@ -121,25 +141,33 @@ def parse_bandwidth_metrics(powermetrics_parse):
     return bandwidth_metrics_dict
 
 
-def parse_cpu_metrics(powermetrics_parse):
-    e_core = []
-    p_core = []
+def parse_cpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, Any]:
+    """Parse CPU cluster metrics from powermetrics data.
+
+    Args:
+        powermetrics_parse: Parsed powermetrics plist dictionary
+
+    Returns:
+        Dictionary with CPU frequencies, utilization, and power metrics
+    """
+    e_core: list[int] = []
+    p_core: list[int] = []
     cpu_metrics = powermetrics_parse["processor"]
-    cpu_metric_dict = {}
+    cpu_metric_dict: dict[str, Any] = {}
+
     # cpu_clusters
     cpu_clusters = cpu_metrics["clusters"]
     for cluster in cpu_clusters:
         name = cluster["name"]
-        cpu_metric_dict[name + "_freq_Mhz"] = int(cluster["freq_hz"] / (1e6))
-        cpu_metric_dict[name + "_active"] = round((1 - cluster["idle_ratio"]) * 100)
+        cpu_metric_dict[f"{name}_freq_Mhz"] = int(cluster["freq_hz"] / 1e6)
+        cpu_metric_dict[f"{name}_active"] = round((1 - cluster["idle_ratio"]) * 100)
+
         for cpu in cluster["cpus"]:
             name = "E-Cluster" if name[0] == "E" else "P-Cluster"
             core = e_core if name[0] == "E" else p_core
             core.append(cpu["cpu"])
-            cpu_metric_dict[name + str(cpu["cpu"]) + "_freq_Mhz"] = int(cpu["freq_hz"] / (1e6))
-            cpu_metric_dict[name + str(cpu["cpu"]) + "_active"] = round(
-                (1 - cpu["idle_ratio"]) * 100
-            )
+            cpu_metric_dict[f"{name}{cpu['cpu']}_freq_Mhz"] = int(cpu["freq_hz"] / 1e6)
+            cpu_metric_dict[f"{name}{cpu['cpu']}_active"] = round((1 - cpu["idle_ratio"]) * 100)
     cpu_metric_dict["e_core"] = e_core
     cpu_metric_dict["p_core"] = p_core
     # Handle M1 Ultra dual E-clusters
@@ -193,10 +221,18 @@ def parse_cpu_metrics(powermetrics_parse):
     return cpu_metric_dict
 
 
-def parse_gpu_metrics(powermetrics_parse):
+def parse_gpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, int]:
+    """Parse GPU metrics from powermetrics data.
+
+    Args:
+        powermetrics_parse: Parsed powermetrics plist dictionary
+
+    Returns:
+        Dictionary with GPU frequency in MHz and utilization percentage
+    """
     gpu_metrics = powermetrics_parse["gpu"]
     gpu_metrics_dict = {
-        "freq_MHz": int(gpu_metrics["freq_hz"]),
+        "freq_MHz": int(gpu_metrics["freq_hz"] / 1e6),  # Convert Hz to MHz
         "active": int((1 - gpu_metrics["idle_ratio"]) * 100),
     }
     return gpu_metrics_dict

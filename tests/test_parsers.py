@@ -357,7 +357,7 @@ class TestParseGPUMetrics(unittest.TestCase):
         }
         result = parse_gpu_metrics(mock_data)
 
-        self.assertEqual(result["freq_MHz"], 1296000000)
+        self.assertEqual(result["freq_MHz"], 1296)  # 1296 MHz = 1296000000 Hz
         self.assertEqual(result["active"], 75)
 
     def test_parse_gpu_metrics_idle(self) -> None:
@@ -396,7 +396,7 @@ class TestParseGPUMetrics(unittest.TestCase):
         }
         result = parse_gpu_metrics(mock_data)
 
-        self.assertEqual(result["freq_MHz"], 1398000000)
+        self.assertEqual(result["freq_MHz"], 1398)  # 1398 MHz = 1398000000 Hz
         self.assertEqual(result["active"], 100)
 
 

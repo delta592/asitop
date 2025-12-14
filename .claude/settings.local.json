@@ -22,7 +22,10 @@
       "Bash(uv run:*)",
       "Bash(make check:*)",
       "Bash(ls:*)",
-      "Bash(uv pip:*)"
+      "Bash(uv pip:*)",
+      "Bash(git -C /Users/dax/scm/github.com/delta592/asitop log --oneline -20)",
+      "Bash(wc:*)",
+      "Bash(sudo powermetrics:*)"
     ]
   }
 }

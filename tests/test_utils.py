@@ -68,10 +68,10 @@ class TestConvertToGB(unittest.TestCase):
 class TestClearConsole(unittest.TestCase):
     """Test cases for clear_console function."""
 
-    @patch("os.system")
-    def test_clear_console_calls_system(self, mock_system: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_clear_console_calls_system(self, mock_run: MagicMock) -> None:
         """
-        Test that clear_console calls os.system with 'clear' command.
+        Test that clear_console calls subprocess.run with ['clear'] command.
 
         Verifies the function executes the correct system command
         to clear the terminal screen.
@@ -79,7 +79,7 @@ class TestClearConsole(unittest.TestCase):
         from asitop.utils import clear_console
 
         clear_console()
-        mock_system.assert_called_once_with("clear")
+        mock_run.assert_called_once_with(["clear"], check=False)
 
 
 class TestParsePowermetrics(unittest.TestCase):
@@ -287,8 +287,8 @@ class TestGetRamMetricsDict(unittest.TestCase):
 class TestGetCPUInfo(unittest.TestCase):
     """Test cases for get_cpu_info function."""
 
-    @patch("os.popen")
-    def test_get_cpu_info_basic(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_cpu_info_basic(self, mock_run: MagicMock) -> None:
         """
         Test extraction of CPU information from sysctl.
 
@@ -302,15 +302,15 @@ class TestGetCPUInfo(unittest.TestCase):
             "machdep.cpu.core_count: 8\n"
             "machdep.cpu.other_field: value\n"
         )
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_cpu_info()
 
         self.assertEqual(result["machdep.cpu.brand_string"], "Apple M1")
         self.assertEqual(result["machdep.cpu.core_count"], "8")
 
-    @patch("os.popen")
-    def test_get_cpu_info_m1_max(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_cpu_info_m1_max(self, mock_run: MagicMock) -> None:
         """
         Test CPU info extraction for M1 Max chip.
 
@@ -319,7 +319,7 @@ class TestGetCPUInfo(unittest.TestCase):
         from asitop.utils import get_cpu_info
 
         mock_output = "machdep.cpu.brand_string: Apple M1 Max\n" "machdep.cpu.core_count: 10\n"
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_cpu_info()
 
@@ -330,8 +330,8 @@ class TestGetCPUInfo(unittest.TestCase):
 class TestGetCoreCounts(unittest.TestCase):
     """Test cases for get_core_counts function."""
 
-    @patch("os.popen")
-    def test_get_core_counts_basic(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_core_counts_basic(self, mock_run: MagicMock) -> None:
         """
         Test extraction of performance and efficiency core counts.
 
@@ -345,15 +345,15 @@ class TestGetCoreCounts(unittest.TestCase):
             "hw.perflevel1.logicalcpu: 2\n"
             "hw.perflevel0.name: P-Core\n"
         )
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_core_counts()
 
         self.assertEqual(result["hw.perflevel0.logicalcpu"], 6)
         self.assertEqual(result["hw.perflevel1.logicalcpu"], 2)
 
-    @patch("os.popen")
-    def test_get_core_counts_m1_ultra(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_core_counts_m1_ultra(self, mock_run: MagicMock) -> None:
         """
         Test core count extraction for M1 Ultra.
 
@@ -363,7 +363,7 @@ class TestGetCoreCounts(unittest.TestCase):
         from asitop.utils import get_core_counts
 
         mock_output = "hw.perflevel0.logicalcpu: 16\n" "hw.perflevel1.logicalcpu: 4\n"
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_core_counts()
 
@@ -374,8 +374,8 @@ class TestGetCoreCounts(unittest.TestCase):
 class TestGetGPUCores(unittest.TestCase):
     """Test cases for get_gpu_cores function."""
 
-    @patch("os.popen")
-    def test_get_gpu_cores_basic(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_gpu_cores_basic(self, mock_run: MagicMock) -> None:
         """
         Test extraction of GPU core count from system_profiler.
 
@@ -385,14 +385,14 @@ class TestGetGPUCores(unittest.TestCase):
         from asitop.utils import get_gpu_cores
 
         mock_output = "      Total Number of Cores: 8\n"
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_gpu_cores()
 
         self.assertEqual(result, 8)
 
-    @patch("os.popen")
-    def test_get_gpu_cores_high_count(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_gpu_cores_high_count(self, mock_run: MagicMock) -> None:
         """
         Test GPU core extraction for high-end configurations.
 
@@ -402,14 +402,14 @@ class TestGetGPUCores(unittest.TestCase):
         from asitop.utils import get_gpu_cores
 
         mock_output = "      Total Number of Cores: 32\n"
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_gpu_cores()
 
         self.assertEqual(result, 32)
 
-    @patch("os.popen")
-    def test_get_gpu_cores_parse_error(self, mock_popen: MagicMock) -> None:
+    @patch("subprocess.run")
+    def test_get_gpu_cores_parse_error(self, mock_run: MagicMock) -> None:
         """
         Test GPU core extraction when parsing fails.
 
@@ -419,7 +419,7 @@ class TestGetGPUCores(unittest.TestCase):
         from asitop.utils import get_gpu_cores
 
         mock_output = "Invalid output\n"
-        mock_popen.return_value.read.return_value = mock_output
+        mock_run.return_value.stdout = mock_output
 
         result = get_gpu_cores()
 
