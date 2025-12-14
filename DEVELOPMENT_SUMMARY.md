@@ -4,25 +4,35 @@ This document summarizes all the development tools, testing infrastructure, and 
 
 ## What Was Added
 
-### 1. Comprehensive Test Suite (67 Tests)
+### 1. Comprehensive Test Suite (74 Tests)
 
 Three test files covering all major functionality:
 
-- **tests/test_parsers.py** (15 tests)
+- **tests/test_parsers.py** (17 tests)
   - Powermetrics parsing for thermal, bandwidth, CPU, and GPU metrics
   - Support for all Apple Silicon variants (M1/Pro/Max/Ultra/M2)
+  - Dual P-cluster configurations (M1 Ultra variants)
+  - Edge cases for bandwidth metrics
 
-- **tests/test_utils.py** (28 tests)
+- **tests/test_utils.py** (31 tests)
   - Utility functions (conversions, system info)
   - SOC information gathering
   - Process management
   - File operations
+  - Error handling for corrupted/partial data
 
-- **tests/test_asitop.py** (24 tests)
+- **tests/test_asitop.py** (26 tests)
   - Argument parsing
   - Main application logic
   - Memory management
   - Power calculations
+  - Restart logic and thermal pressure handling
+
+Current Test Coverage (as of latest run):
+- **Total**: 79.86%
+- **parsers.py**: 98.85%
+- **utils.py**: 96.49%
+- **asitop.py**: 54.02%
 
 All tests follow python_instructions.md guidelines:
 - Type hints using `typing` module
@@ -30,17 +40,32 @@ All tests follow python_instructions.md guidelines:
 - Edge case coverage
 - Proper mocking
 
-### 2. Makefile with Virtual Environment Management
+### 2. Modern Dependency Management with uv
 
-**Makefile** provides 20+ commands organized into categories:
+The project now uses **uv** for fast, reliable dependency management:
+
+**Key Benefits:**
+- 10-100x faster than pip
+- Reproducible builds via uv.lock
+- Better dependency resolution
+- Modern PEP 517/518/621 compliant
+
+**Configuration Files:**
+- **pyproject.toml** - Central project configuration (replaces setup.py, requirements.txt)
+- **uv.lock** - Lock file for reproducible builds
+- **Makefile** - Updated to use uv commands
+
+### 3. Makefile with uv Integration
+
+**Makefile** provides 20+ commands using uv, organized into categories:
 
 **Setup:**
-- `make venv` - Create virtual environment
+- `make sync` - Sync production dependencies (uv sync --no-dev)
 - `make install` - Install production dependencies
-- `make install-dev` - Install dev/test dependencies
+- `make install-dev` - Install dev/test dependencies (uv sync --extra test)
 
 **Testing:**
-- `make test` - Run all tests
+- `make test` - Run all tests with uv run pytest
 - `make test-coverage` - Run with coverage report
 - `make coverage-html` - Generate HTML coverage report
 - `make test-watch` - Auto-run tests on file changes
@@ -55,12 +80,12 @@ All tests follow python_instructions.md guidelines:
 - `make check` - Run all quality checks
 
 **Cleanup:**
-- `make clean` - Remove all generated files
+- `make clean` - Remove all generated files (.venv, build, dist)
 - `make clean-pyc` - Remove Python cache
 - `make clean-test` - Remove test artifacts
 
 **Distribution:**
-- `make dist` - Build packages
+- `make dist` - Build packages with uv build
 - `make upload-test` - Upload to TestPyPI
 - `make upload` - Upload to PyPI
 
@@ -81,28 +106,22 @@ Usage:
 
 ### 4. Configuration Files
 
-**pytest.ini** - Pytest configuration
-- Test discovery patterns
-- Coverage settings
-- Output formatting
-- Test markers
+**pyproject.toml** - Central project configuration (PEP 517/518/621)
+- Project metadata and dependencies
+- Optional test dependencies via [project.optional-dependencies]
+- Entry points for CLI (asitop command)
+- Tool configuration (pytest, coverage, mypy, pylint, flake8)
+- Replaces: setup.py, requirements.txt, requirements-test.txt, pytest.ini, .coveragerc
 
-**.coveragerc** - Coverage configuration
-- Source tracking
-- File exclusions
-- Report formatting
-- HTML output
+**uv.lock** - Lock file for reproducible builds
+- Exact dependency versions
+- Cross-platform compatibility
+- Fast dependency resolution
 
-**requirements.txt** - Production dependencies
-- dashing (UI framework)
-- psutil (system utilities)
-
-**requirements-test.txt** - Test dependencies
-- pytest >= 7.0.0
-- pytest-cov >= 4.0.0
-- pytest-mock >= 3.10.0
-- coverage >= 7.0.0
-- Linting tools (pylint, flake8, mypy)
+**Makefile** - Build automation using uv
+- All commands use `uv` and `uv run`
+- Automatic virtual environment management at .venv/
+- No manual venv activation needed
 
 ### 5. GitHub Actions Workflow
 
@@ -154,7 +173,11 @@ Usage:
 ### First Time Setup
 
 ```bash
-make install-dev    # Set up everything
+# Install uv if not already installed
+brew install uv
+
+# Set up everything with uv
+make install-dev    # Runs: uv sync --extra test
 make test           # Verify installation
 ```
 
@@ -224,19 +247,22 @@ asitop/
 
 ## Key Features
 
-### Virtual Environment Management
+### uv Dependency Management
 
 All Makefile commands automatically:
-1. Create venv if it doesn't exist
-2. Use venv Python and packages
-3. Keep system Python clean
-4. Ensure reproducible builds
+1. Use uv for fast dependency resolution
+2. Create .venv if it doesn't exist (via uv sync)
+3. Use .venv Python and packages
+4. Keep system Python clean
+5. Ensure reproducible builds via uv.lock
+6. 10-100x faster than traditional pip/venv
 
 ### Test Coverage
 
-- **67 comprehensive tests**
+- **74 comprehensive tests** (increased from 67)
 - **3 test files** covering all modules
-- **Edge cases** tested (empty, zero, max, errors)
+- **79.86% total coverage** (parsers: 98.85%, utils: 96.49%, asitop: 54.02%)
+- **Edge cases** tested (empty, zero, max, errors, corrupted data)
 - **All Apple Silicon variants** (M1/Pro/Max/Ultra/M2)
 - **Proper mocking** of system calls
 - **Type hints** and **docstrings** on all tests

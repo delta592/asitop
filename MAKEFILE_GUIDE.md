@@ -16,24 +16,54 @@ make run
 ## Overview
 
 The Makefile provides a convenient way to:
-- Automatically manage a Python virtual environment
-- Install dependencies in isolation
+- Use **uv** for fast, modern dependency management
+- Automatically manage a Python virtual environment at `.venv/`
+- Install dependencies with reproducible builds (via uv.lock)
 - Run tests with coverage
 - Run asitop with proper sudo permissions
 - Perform code quality checks
 - Build and distribute packages
 
-All commands automatically use the virtual environment located at `./venv/`.
+All commands use **uv** and automatically manage the virtual environment.
+
+## What is uv?
+
+[uv](https://github.com/astral-sh/uv) is a modern Python package manager that is:
+- 10-100x faster than pip
+- Built in Rust for performance
+- Compatible with existing Python tooling
+- PEP 517/518/621 compliant
+
+This project uses uv via `pyproject.toml` instead of traditional `requirements.txt` and `setup.py`.
+
+## Prerequisites
+
+Before using the Makefile, install uv:
+
+```bash
+# macOS/Linux
+brew install uv
+
+# Alternative: pip
+pip install uv
+
+# Verify installation
+uv --version
+```
 
 ## Setup Commands
 
-### Create Virtual Environment
+### Sync Production Dependencies
 
 ```bash
-make venv
+make sync
 ```
 
-Creates a Python virtual environment in the `venv/` directory.
+- Syncs production dependencies only using `uv sync --no-dev`
+- Creates `.venv/` if it doesn't exist
+- Installs dashing and psutil
+- Does NOT install test dependencies
+- Uses `uv.lock` for reproducible builds
 
 ### Install Production Dependencies
 
@@ -41,9 +71,7 @@ Creates a Python virtual environment in the `venv/` directory.
 make install
 ```
 
-- Creates virtual environment if needed
-- Installs production dependencies (dashing, psutil)
-- Does NOT install test dependencies
+Alias for `make sync`.
 
 ### Install Development Dependencies
 
@@ -51,10 +79,12 @@ make install
 make install-dev
 ```
 
-- Creates virtual environment if needed
+- Syncs all dependencies using `uv sync --extra test`
+- Creates `.venv/` if it doesn't exist
 - Installs production dependencies
 - Installs test dependencies (pytest, coverage, linters)
 - **Use this for development and testing**
+- Uses `uv.lock` for reproducible builds
 
 ## Testing Commands
 
@@ -64,14 +94,23 @@ make install-dev
 make test
 ```
 
-Runs all tests with verbose output using pytest.
+Runs all tests with verbose output using `uv run pytest`.
 
 Example output:
 ```
 tests/test_parsers.py::TestParseCPUMetrics::test_parse_cpu_metrics_m1 PASSED
 tests/test_utils.py::TestGetSOCInfo::test_get_soc_info_m1_max PASSED
 ...
-========================= 67 passed in 0.45s =========================
+========================= 74 passed in 0.45s =========================
+
+---------- coverage: platform darwin, python 3.11.6 -----------
+Name                Stmts   Miss  Cover
+---------------------------------------
+asitop/asitop.py      187     86    54%
+asitop/parsers.py      87      1    99%
+asitop/utils.py       137      5    96%
+---------------------------------------
+TOTAL                 411     92    78%
 ```
 
 ### Run Tests with Verbose Output
@@ -363,17 +402,30 @@ make upload
 
 ## Troubleshooting
 
+### uv Not Found
+
+**Problem**: `make: uv: command not found`
+
+**Solution**: Install uv
+```bash
+# macOS
+brew install uv
+
+# Alternative
+pip install uv
+
+# Verify
+uv --version
+```
+
 ### Virtual Environment Issues
 
-**Problem**: `make: *** [venv] Error 1`
+**Problem**: Dependencies not installing correctly
 
-**Solution**: Python venv module missing
+**Solution**: Clean and reinstall
 ```bash
-# macOS with Homebrew
-brew install python3
-
-# Ensure python3 is available
-which python3
+make clean
+make install-dev
 ```
 
 ### Permission Issues
@@ -425,15 +477,15 @@ make help
 
 ## Environment Variables
 
-The Makefile uses these variables (can be overridden):
+The Makefile uses these variables:
 
-```bash
-# Use a different Python version
-make install PYTHON=python3.10
-
-# Use a different venv location (not recommended)
-make install VENV=myenv
+```makefile
+UV := uv              # uv command
+UV_RUN := $(UV) run   # uv run prefix for commands
+VENV := .venv         # Virtual environment location
 ```
+
+These are configured in the Makefile and generally don't need to be changed.
 
 ## Tips and Best Practices
 
@@ -445,13 +497,13 @@ make install VENV=myenv
 6. **Run asitop with `make run`** for convenience
 7. **Check coverage** with `make coverage-html` regularly
 
-## Virtual Environment Details
+## uv and Virtual Environment Details
 
-The Makefile creates and manages a virtual environment at `./venv/`:
+The Makefile uses uv to create and manage a virtual environment at `./.venv/`:
 
 ```
 asitop/
-├── venv/                    # Virtual environment (auto-created)
+├── .venv/                   # Virtual environment (auto-created by uv)
 │   ├── bin/
 │   │   ├── python          # Isolated Python interpreter
 │   │   ├── pip             # Isolated pip
@@ -459,15 +511,19 @@ asitop/
 │   └── lib/
 │       └── python3.x/
 │           └── site-packages/  # Isolated packages
+├── pyproject.toml          # Project config (replaces setup.py)
+├── uv.lock                 # Lock file (replaces requirements.txt)
 ├── Makefile
 └── ...
 ```
 
 Benefits:
+- **Speed**: 10-100x faster than pip for dependency resolution
 - **Isolation**: Packages don't affect system Python
-- **Reproducibility**: Same dependencies for all developers
-- **Convenience**: Automatic activation in Makefile commands
-- **Safety**: Can delete `venv/` and recreate anytime
+- **Reproducibility**: uv.lock ensures exact same versions across machines
+- **Convenience**: Automatic activation in Makefile commands via `uv run`
+- **Safety**: Can delete `.venv/` and recreate anytime with `make install-dev`
+- **Modern**: Uses pyproject.toml (PEP 517/518/621) instead of setup.py
 
 ## Getting Help
 

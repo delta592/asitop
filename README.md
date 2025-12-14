@@ -7,7 +7,11 @@ Performance monitoring CLI tool for Apple Silicon
 ![](images/asitop.png)
 
 ```shell
+# Using pip
 pip install asitop
+
+# Using uv (recommended for development)
+uv pip install asitop
 ```
 
 ## What is `asitop`
@@ -32,7 +36,37 @@ A Python-based `nvtop`-inspired command line tool for Apple Silicon (aka M1) Mac
 
 ## Installation and Usage
 
-`asitop` is a Python-based command line tool. You need `pip` to download and install `asitop`. macOS already comes with Python, to install `pip`, you can follow an [online guide](https://phoenixnap.com/kb/install-pip-mac). After you install `asitop` via `pip`, you can use it via the Terminal.
+`asitop` is a Python-based command line tool. You can install it using `pip` or `uv`. macOS already comes with Python. After installing `asitop`, you can use it via the Terminal.
+
+### For Users
+
+Using pip:
+```shell
+pip install asitop
+```
+
+Using uv (faster):
+```shell
+uv pip install asitop
+```
+
+### For Development
+
+For development, this project uses [uv](https://github.com/astral-sh/uv) for dependency management:
+
+```shell
+# Clone the repository
+git clone https://github.com/tlkh/asitop.git
+cd asitop
+
+# Install dependencies using uv
+make install-dev
+
+# Run tests
+make test
+```
+
+See [QUICKSTART.md](QUICKSTART.md) for detailed development setup.
 
 ```shell
 # to enter password before start
