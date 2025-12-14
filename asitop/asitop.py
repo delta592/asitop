@@ -37,7 +37,7 @@ def calculate_gpu_usage(
     return gpu_percent, display_freq_mhz
 
 
-def main() -> subprocess.Popen:
+def main() -> subprocess.Popen[bytes]:
     """Main application function for asitop performance monitor.
 
     Returns:
@@ -215,7 +215,7 @@ def main() -> subprocess.Popen:
 
     print("\n[3/3] Waiting for first reading...\n")
 
-    def get_reading(wait=0.1):
+    def get_reading(wait: float = 0.1) -> tuple[dict[str, Any], dict[str, Any], str, None, int]:
         ready = parse_powermetrics(timecode=timecode)
         while not ready:
             time.sleep(wait)
@@ -225,13 +225,13 @@ def main() -> subprocess.Popen:
     ready = get_reading()
     last_timestamp = ready[-1]
 
-    def get_avg(inlist):
+    def get_avg(inlist: deque[float]) -> float:
         avg = sum(inlist) / len(inlist)
         return avg
 
-    avg_package_power_list = deque([], maxlen=int(args.avg / args.interval))
-    avg_cpu_power_list = deque([], maxlen=int(args.avg / args.interval))
-    avg_gpu_power_list = deque([], maxlen=int(args.avg / args.interval))
+    avg_package_power_list: deque[float] = deque([], maxlen=int(args.avg / args.interval))
+    avg_cpu_power_list: deque[float] = deque([], maxlen=int(args.avg / args.interval))
+    avg_gpu_power_list: deque[float] = deque([], maxlen=int(args.avg / args.interval))
 
     clear_console()
 
@@ -250,8 +250,9 @@ def main() -> subprocess.Popen:
                     timecode, interval=max(100, int(args.interval * 1000)), nice=args.nice
                 )
             count += 1
-            ready = parse_powermetrics(timecode=timecode)
-            if ready is not False:
+            ready_result = parse_powermetrics(timecode=timecode)
+            if ready_result is not False:
+                ready = ready_result
                 (
                     cpu_metrics_dict,
                     gpu_metrics_dict,

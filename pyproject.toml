@@ -88,12 +88,22 @@ warn_unused_ignores = true
 check_untyped_defs = true
 strict_optional = true
 # Allow untyped definitions (flexible for this codebase)
-disallow_untyped_defs = false
+# disallow_untyped_defs = false
+# best practice setting
+disallow_untyped_defs = true
 # Global ignore for missing imports (psutil, dashing)
 # TODO: Consider migrating to per-module ignores for better type coverage
-ignore_missing_imports = true
+# ignore_missing_imports = true
 # Disable noisy checks that don't add value for this codebase
-disable_error_code = ["var-annotated", "assignment"]
+# disable_error_code = ["var-annotated", "assignment"]
+disallow_any_generics = true
+disallow_untyped_calls = true
+no_implicit_reexport = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["psutil.*", "dashing.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

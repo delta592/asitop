@@ -124,7 +124,7 @@ SOC_SPECS = {
 
 def parse_powermetrics(
     path: str = "/tmp/asitop_powermetrics", timecode: str = "0"
-) -> tuple[dict, dict, str, None, int] | Literal[False]:
+) -> tuple[dict[str, Any], dict[str, Any], str, None, int] | Literal[False]:
     """Parse powermetrics plist file and extract metrics.
 
     To avoid unbounded memory growth, only the last slice of the file is read.
@@ -183,7 +183,7 @@ def convert_to_gb(value: float) -> float:
 
 def run_powermetrics_process(
     timecode: str, nice: int = 10, interval: int = 1000
-) -> subprocess.Popen:
+) -> subprocess.Popen[bytes]:
     """Start powermetrics subprocess to collect system metrics.
 
     Args:
@@ -343,6 +343,8 @@ def get_soc_info() -> dict[str, Any]:
     cpu_info_dict = get_cpu_info()
     core_counts_dict = get_core_counts()
 
+    e_core_count: int | str
+    p_core_count: int | str
     try:
         e_core_count = core_counts_dict["hw.perflevel1.logicalcpu"]
         p_core_count = core_counts_dict["hw.perflevel0.logicalcpu"]
