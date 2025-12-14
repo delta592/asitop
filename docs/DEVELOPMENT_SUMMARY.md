@@ -4,7 +4,7 @@ This document summarizes all the development tools, testing infrastructure, and 
 
 ## What Was Added
 
-### 1. Comprehensive Test Suite (74 Tests)
+### 1. Comprehensive Test Suite (81 Tests)
 
 Three test files covering all major functionality:
 
@@ -29,10 +29,10 @@ Three test files covering all major functionality:
   - Restart logic and thermal pressure handling
 
 Current Test Coverage (as of latest run):
-- **Total**: 79.86%
-- **parsers.py**: 98.85%
-- **utils.py**: 96.49%
-- **asitop.py**: 54.02%
+- **Total**: 77.40%
+- **parsers.py**: 90.35%
+- **utils.py**: 95.35%
+- **asitop.py**: 57.95%
 
 All tests follow python_instructions.md guidelines:
 - Type hints using `typing` module
@@ -40,7 +40,38 @@ All tests follow python_instructions.md guidelines:
 - Edge case coverage
 - Proper mocking
 
-### 2. Modern Dependency Management with uv
+### 2. Code Quality Modernization (2025)
+
+The project has undergone comprehensive modernization since commit f393344:
+
+**Ruff Configuration (commit 1416641):**
+- Upgraded to ALL rules enabled with strategic ignores
+- Preview mode for modern best practices
+- Enhanced per-file ignore patterns for __init__.py, tests, and main module
+- Modern formatter configuration (quote-style, docstring-code-format)
+- Comprehensive complexity limits (max-args=7, max-branches=15)
+- Modern import sorting with isort configuration
+
+**Mypy Configuration (commit 4dbd578):**
+- Strict type checking enabled (disallow_untyped_defs = true)
+- Enhanced validation (disallow_any_generics, disallow_untyped_calls, no_implicit_reexport)
+- Module-specific overrides for third-party libraries (psutil, dashing)
+- All code refactored to pass strict mypy checks
+
+**Black Configuration (latest):**
+- Modern best practices with explicit settings
+- Support for Python 3.10-3.14
+- Comprehensive exclusion patterns (12 directories)
+- Aligned with Ruff formatter for consistency
+
+**Code Refactoring:**
+All source and test code has been refactored to:
+- Pass strict mypy type checking
+- Comply with comprehensive Ruff linting rules
+- Follow consistent Black/Ruff formatting
+- Use modern Python patterns and best practices
+
+### 3. Modern Dependency Management with uv
 
 The project now uses **uv** for fast, reliable dependency management:
 
@@ -92,7 +123,7 @@ The project now uses **uv** for fast, reliable dependency management:
 - `make upload-test` - Upload to TestPyPI
 - `make upload` - Upload to PyPI
 
-### 3. Shell Script for Running asitop
+### 4. Shell Script for Running asitop
 
 **run_asitop.sh** - Bash script that:
 - Auto-creates venv if needed
@@ -107,7 +138,7 @@ Usage:
 ./run_asitop.sh --interval 5 --color 3
 ```
 
-### 4. Configuration Files
+### 5. Configuration Files
 
 **pyproject.toml** - Central project configuration (PEP 517/518/621)
 - Project metadata and dependencies
@@ -127,7 +158,7 @@ Usage:
 - Automatic virtual environment management at .venv/
 - No manual venv activation needed
 
-### 5. GitHub Actions Workflow
+### 6. GitHub Actions Workflow
 
 **.github/workflows/tests.yml** - CI/CD configuration
 - Test matrix for Python 3.10+
@@ -135,7 +166,7 @@ Usage:
 - Coverage reporting to Codecov
 - Code quality checks (Ruff, Black, Mypy)
 
-### 6. Comprehensive Documentation
+### 7. Comprehensive Documentation
 
 **QUICKSTART.md** - Quick start guide
 - 3-step setup process
@@ -263,13 +294,14 @@ All Makefile commands automatically:
 
 ### Test Coverage
 
-- **74 comprehensive tests** (increased from 67)
+- **81 comprehensive tests**
 - **3 test files** covering all modules
-- **79.86% total coverage** (parsers: 98.85%, utils: 96.49%, asitop: 54.02%)
+- **77.40% total coverage** (parsers: 90.35%, utils: 95.35%, asitop: 57.95%)
 - **Edge cases** tested (empty, zero, max, errors, corrupted data)
 - **All Apple Silicon variants** (M1/Pro/Max/Ultra/M2)
 - **Proper mocking** of system calls
 - **Type hints** and **docstrings** on all tests
+- **Strict quality**: Passes Ruff (ALL rules), Black, and strict Mypy
 
 ### Automation
 

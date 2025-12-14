@@ -101,16 +101,16 @@ Example output:
 tests/test_parsers.py::TestParseCPUMetrics::test_parse_cpu_metrics_m1 PASSED
 tests/test_utils.py::TestGetSOCInfo::test_get_soc_info_m1_max PASSED
 ...
-========================= 74 passed in 0.45s =========================
+========================= 81 passed in 0.24s =========================
 
----------- coverage: platform darwin, python 3.11.6 -----------
-Name                Stmts   Miss  Cover
----------------------------------------
-asitop/asitop.py      187     86    54%
-asitop/parsers.py      87      1    99%
-asitop/utils.py       137      5    96%
----------------------------------------
-TOTAL                 411     92    78%
+---------- coverage: platform darwin, python 3.14.2 -----------
+Name                Stmts   Miss Branch BrPart  Cover
+-----------------------------------------------------
+asitop/asitop.py      169     64     26      4  57.95%
+asitop/parsers.py      82      7     32      2  90.35%
+asitop/utils.py       107      6     22      0  95.35%
+-----------------------------------------------------
+TOTAL                 358     77     80      6  77.40%
 ```
 
 ### Run Tests with Verbose Output
@@ -625,7 +625,7 @@ All done! ✨ 🍰 ✨
 Success: no issues found in 4 source files
 
 === Running tests with coverage ===
-========================= 74 passed in 0.27s =========================
+========================= 81 passed in 0.24s =========================
 
 Quality checks complete
 ```

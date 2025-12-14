@@ -6,14 +6,14 @@ A comprehensive test suite has been added to the asitop project following the Py
 
 ## Test Statistics
 
-- **Total Tests**: 74 (increased from 67)
+- **Total Tests**: 81
 - **Test Files**: 3
-- **Test Classes**: 24 (increased from 21)
+- **Test Classes**: 26
 - **Code Modules Covered**: 3 (parsers.py, utils.py, asitop.py)
-- **Overall Coverage**: 79.86%
-  - parsers.py: 98.85%
-  - utils.py: 96.49%
-  - asitop.py: 54.02%
+- **Overall Coverage**: 77.40%
+  - parsers.py: 90.35%
+  - utils.py: 95.35%
+  - asitop.py: 57.95%
 
 ## Test Breakdown
 
@@ -285,15 +285,45 @@ When adding new features or fixes:
 - [PEP 257 Docstrings](https://peps.python.org/pep-0257/)
 - [PEP 484 Type Hints](https://peps.python.org/pep-0484/)
 
+## Code Quality Modernization (2025)
+
+Since commit f393344, the project has undergone comprehensive modernization:
+
+### Ruff Configuration (commit 1416641)
+- **ALL rules enabled**: Comprehensive linting with strategic ignores
+- **Preview mode**: Modern best practices and upcoming improvements
+- **Enhanced per-file ignores**: Customized for different file types
+- **Modern formatter**: Aligned with Black, includes docstring formatting
+
+### Mypy Configuration (commit 4dbd578)
+- **Strict type checking**: disallow_untyped_defs enabled
+- **Enhanced validation**: disallow_any_generics, disallow_untyped_calls, no_implicit_reexport
+- **Module-specific overrides**: Clean handling of third-party libraries
+
+### Black Configuration (latest)
+- **Modern best practices**: Explicit configuration for all settings
+- **Python 3.10-3.14 support**: Multi-version target compatibility
+- **Comprehensive excludes**: 12 common cache/build directories
+- **Aligned with Ruff**: Consistent formatting across tools
+
+### Code Refactoring
+All source code has been refactored to meet strict standards:
+- **Type annotations**: Full compliance with strict mypy
+- **Linting**: Passes comprehensive Ruff rules
+- **Formatting**: Consistent Black/Ruff formatting
+- **Best practices**: Modern Python patterns throughout
+
 ## Success Metrics
 
 The test suite provides:
 
-- **74 comprehensive tests** covering all major functionality (up from 67)
-- **79.86% code coverage** with near-perfect coverage of business logic
-  - parsers.py: 98.85% (up from 94.25%)
-  - utils.py: 96.49% (up from 93.57%)
-  - asitop.py: 54.02% (UI code, acceptable)
+- **81 comprehensive tests** covering all major functionality
+- **77.40% code coverage** with excellent coverage of business logic
+  - parsers.py: 90.35%
+  - utils.py: 95.35%
+  - asitop.py: 57.95% (UI code, acceptable)
+- **Strict code quality**: Passes Ruff (ALL rules), Black, and strict Mypy
+- **Modern tooling**: Centralized configuration in pyproject.toml
 - **Clear documentation** for writing and running tests
 - **Best practice examples** following Python conventions
 - **CI/CD ready** configuration using modern uv tooling

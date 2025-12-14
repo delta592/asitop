@@ -35,26 +35,26 @@ This runs `uv sync --extra test`, which:
 ### 2. Run Tests
 
 ```bash
-# Run all 74 tests
+# Run all 81 tests
 make test
 ```
 
 Expected output:
 ```
 Running tests...
-========================= 74 passed in 0.5s =========================
+========================= 81 passed in 0.24s =========================
 
----------- coverage: platform darwin, python 3.11.6 -----------
-Name                Stmts   Miss  Cover
----------------------------------------
-asitop/asitop.py      187     86    54%
-asitop/parsers.py      87      1    99%
-asitop/utils.py       137      5    96%
----------------------------------------
-TOTAL                 411     92    78%
+---------- coverage: platform darwin, python 3.14.2 -----------
+Name                Stmts   Miss Branch BrPart  Cover
+-----------------------------------------------------
+asitop/asitop.py      169     64     26      4  57.95%
+asitop/parsers.py      82      7     32      2  90.35%
+asitop/utils.py       107      6     22      0  95.35%
+-----------------------------------------------------
+TOTAL                 358     77     80      6  77.40%
 ```
 
-Current coverage: 79.86% total (parsers: 98.85%, utils: 96.49%)
+Current coverage: 77.40% total (parsers: 90.35%, utils: 95.35%, asitop: 57.95%)
 
 ### 3. Run asitop
 
@@ -141,9 +141,9 @@ asitop/
 │   ├── asitop.py        # Main application
 │   ├── utils.py         # Utility functions
 │   └── parsers.py       # Parsing functions
-├── tests/               # Test suite (74 tests)
-│   ├── test_asitop.py   # Main app tests (26 tests)
-│   ├── test_utils.py    # Utils tests (31 tests)
+├── tests/               # Test suite (81 tests)
+│   ├── test_asitop.py   # Main app tests (31 tests)
+│   ├── test_utils.py    # Utils tests (33 tests)
 │   └── test_parsers.py  # Parser tests (17 tests)
 ├── .venv/               # Virtual environment (auto-created by uv)
 ├── pyproject.toml       # Project config (replaces setup.py)

@@ -73,10 +73,10 @@ uv run pytest --cov=asitop --cov-fail-under=75
 ```
 
 Current Coverage (as of latest run):
-- **Total**: 79.86%
-- **parsers.py**: 98.85%
-- **utils.py**: 96.49%
-- **asitop.py**: 54.02%
+- **Total**: 77.40%
+- **parsers.py**: 90.35%
+- **utils.py**: 95.35%
+- **asitop.py**: 57.95%
 
 ### Filtering Tests
 
@@ -220,14 +220,14 @@ def test_multiple_mocks(self, mock1: MagicMock, mock2: MagicMock) -> None:
 
 ### Coverage Goals
 
-- **Line Coverage**: Target 80%+ (currently 79.86%)
+- **Line Coverage**: Target 80%+ (currently 77.40%)
 - **Branch Coverage**: Target 75%
 - **Function Coverage**: Target 90%+
 
 Current Achievement:
-- parsers.py: 98.85% (excellent)
-- utils.py: 96.49% (excellent)
-- asitop.py: 54.02% (UI-heavy, acceptable)
+- parsers.py: 90.35% (excellent)
+- utils.py: 95.35% (excellent)
+- asitop.py: 57.95% (UI-heavy, acceptable)
 
 ### Viewing Coverage
 
@@ -358,12 +358,71 @@ mock_powermetrics = {
 }
 ```
 
+## Code Quality Configuration
+
+The project uses modern, strict best practices for code quality as of 2025:
+
+### Ruff (Linter and Formatter)
+- **Comprehensive rule set**: ALL rules enabled by default with strategic ignores
+- **Preview mode**: Enabled for modern best practices
+- **Per-file ignores**: Customized for __init__.py, tests, and main module
+- **Complexity limits**: max-args=7, max-branches=15, max-statements=50
+- **Modern import sorting**: isort configuration with sections
+- **Format compatibility**: Aligned with Black formatting
+
+### Black (Code Formatter)
+- **Target versions**: Python 3.10-3.14
+- **Line length**: 100 characters (consistent with Ruff)
+- **String normalization**: Enabled (enforce double quotes)
+- **Trailing comma**: Respected (skip-magic-trailing-comma = false)
+- **Comprehensive excludes**: 12 common cache/build directories
+
+### Mypy (Type Checker)
+- **Strict mode**: disallow_untyped_defs = true
+- **Enhanced checks**: disallow_any_generics, disallow_untyped_calls, no_implicit_reexport
+- **Module overrides**: Ignore missing imports for psutil and dashing only
+- **Error detection**: warn_unreachable, warn_redundant_casts
+
+All configuration is centralized in [pyproject.toml](../pyproject.toml#L108-L305).
+
+## Recent Enhancements (2025)
+
+### Modernization Updates
+Since commit f393344, the project has received major quality enhancements:
+
+1. **Ruff Configuration** (commit 1416641)
+   - Upgraded to comprehensive ALL rules selection
+   - Strategic ignores for practical development
+   - Enhanced per-file ignore patterns
+   - Modern formatter configuration
+
+2. **Mypy Configuration** (commit 4dbd578)
+   - Strict type checking enabled
+   - All code refactored to pass strict mypy
+   - Module-specific overrides for third-party libraries
+
+3. **Black Configuration** (current)
+   - Modern best practices with explicit settings
+   - Support for Python 3.10-3.14
+   - Comprehensive exclusion patterns
+   - Aligned with Ruff formatter
+
+### Code Refactoring
+All code has been refactored to comply with:
+- Strict type annotations
+- Modern linting rules
+- Consistent formatting
+- Best practice patterns
+
 ## Resources
 
 - [pytest Documentation](https://docs.pytest.org/)
 - [unittest Documentation](https://docs.python.org/3/library/unittest.html)
 - [Python Mock Documentation](https://docs.python.org/3/library/unittest.mock.html)
 - [Coverage.py Documentation](https://coverage.readthedocs.io/)
+- [Ruff Documentation](https://docs.astral.sh/ruff/)
+- [Black Documentation](https://black.readthedocs.io/)
+- [Mypy Documentation](https://mypy.readthedocs.io/)
 - [PEP 8 Style Guide](https://peps.python.org/pep-0008/)
 - [PEP 257 Docstring Conventions](https://peps.python.org/pep-0257/)
 
@@ -375,4 +434,5 @@ If you encounter issues with tests:
 2. Review test examples in the test files
 3. Read the error messages carefully
 4. Use `pytest -vv` for detailed output
-5. Open an issue on GitHub with test output
+5. Run `make check` to see all quality checks
+6. Open an issue on GitHub with test output
