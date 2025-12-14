@@ -4,7 +4,8 @@
 
 .PHONY: help sync install install-dev test test-verbose test-coverage \
         test-watch clean clean-pyc clean-test run lint format format-check \
-        type-check check fix coverage-html coverage-report dist upload-test upload
+        type-check check fix coverage-html coverage-report dist upload-test upload \
+        ci-test ci-quality ci-check
 
 # uv configuration
 UV := uv
@@ -38,6 +39,11 @@ help:
 	@echo "  make check          Run all quality checks (lint, format-check, type-check)"
 	@echo "  make format-check   Check if code is formatted correctly"
 	@echo "  make fix            Auto-fix linting issues with Ruff"
+	@echo ""
+	@echo "CI/CD commands:"
+	@echo "  make ci-test        Run tests with coverage (for CI, skip install)"
+	@echo "  make ci-quality     Run quality checks (for CI, skip install)"
+	@echo "  make ci-check       Run all CI checks (test + quality)"
 	@echo ""
 	@echo "Cleanup commands:"
 	@echo "  make clean          Remove all generated files"
@@ -213,3 +219,26 @@ upload: dist
 	else \
 		echo "Upload cancelled"; \
 	fi
+
+# CI/CD specific targets (skip dependency installation for faster CI runs)
+ci-test:
+	@echo "Running tests with coverage (CI mode)..."
+	$(UV_RUN) pytest --cov=asitop --cov-report=xml --cov-report=term-missing --cov-fail-under=85 -v
+
+ci-quality:
+	@echo "Running quality checks (CI mode)..."
+	@echo ""
+	@echo "=== Running Ruff linter ==="
+	$(UV_RUN) ruff check asitop/ tests/
+	@echo ""
+	@echo "=== Checking Black formatting ==="
+	$(UV_RUN) black --check asitop/ tests/
+	@echo ""
+	@echo "=== Running Mypy type checker ==="
+	$(UV_RUN) mypy asitop/
+	@echo ""
+	@echo "Quality checks complete"
+
+ci-check: ci-quality ci-test
+	@echo ""
+	@echo "All CI checks passed successfully"
