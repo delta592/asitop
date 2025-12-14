@@ -3,8 +3,8 @@
 # Uses uv for dependency management
 
 .PHONY: help sync install install-dev test test-verbose test-coverage \
-        test-watch clean clean-pyc clean-test run lint format check \
-        coverage-html coverage-report dist upload-test upload
+        test-watch clean clean-pyc clean-test run lint format format-check \
+        type-check check fix coverage-html coverage-report dist upload-test upload
 
 # uv configuration
 UV := uv
@@ -32,9 +32,12 @@ help:
 	@echo "  make run-nosudo     Run asitop without sudo (will prompt later)"
 	@echo ""
 	@echo "Code quality commands:"
-	@echo "  make lint           Run linters (flake8, pylint)"
-	@echo "  make format         Format code with autopep8"
-	@echo "  make check          Run all quality checks"
+	@echo "  make lint           Run linter (Ruff)"
+	@echo "  make format         Format code with Black"
+	@echo "  make type-check     Run type checker (Mypy)"
+	@echo "  make check          Run all quality checks (lint, format-check, type-check)"
+	@echo "  make format-check   Check if code is formatted correctly"
+	@echo "  make fix            Auto-fix linting issues with Ruff"
 	@echo ""
 	@echo "Cleanup commands:"
 	@echo "  make clean          Remove all generated files"
@@ -112,31 +115,48 @@ run-nosudo: install
 	@echo "Press Ctrl+C to stop"
 	@$(UV_RUN) asitop
 
-# Run linters
+# Run linter (Ruff)
 lint: install-dev
-	@echo "Running flake8..."
-	-$(UV_RUN) flake8 asitop --count --select=E9,F63,F7,F82 --show-source --statistics
-	-$(UV_RUN) flake8 asitop --count --max-line-length=79 --statistics
-	@echo ""
-	@echo "Running pylint..."
-	-$(UV_RUN) pylint asitop --max-line-length=79
+	@echo "Running Ruff linter..."
+	$(UV_RUN) ruff check asitop/ tests/
 
-# Format code
+# Auto-fix linting issues
+fix: install-dev
+	@echo "Auto-fixing linting issues with Ruff..."
+	$(UV_RUN) ruff check --fix asitop/ tests/
+	@echo "Linting issues fixed"
+
+# Format code with Black
 format: install-dev
-	@echo "Formatting code with autopep8..."
-	@$(UV) add --dev autopep8 2>/dev/null || true
-	-$(UV_RUN) autopep8 --in-place --aggressive --aggressive -r asitop/
+	@echo "Formatting code with Black..."
+	$(UV_RUN) black asitop/ tests/
 	@echo "Code formatted"
+
+# Check if code is formatted correctly
+format-check: install-dev
+	@echo "Checking code formatting with Black..."
+	$(UV_RUN) black --check asitop/ tests/
+
+# Run type checker (Mypy)
+type-check: install-dev
+	@echo "Running Mypy type checker..."
+	$(UV_RUN) mypy asitop/
 
 # Run all quality checks
 check: install-dev
 	@echo "Running all quality checks..."
 	@echo ""
-	@echo "=== Running tests ==="
-	@$(MAKE) test-coverage
-	@echo ""
-	@echo "=== Running linters ==="
+	@echo "=== Running Ruff linter ==="
 	@$(MAKE) lint
+	@echo ""
+	@echo "=== Checking code formatting with Black ==="
+	@$(MAKE) format-check
+	@echo ""
+	@echo "=== Running Mypy type checker ==="
+	@$(MAKE) type-check
+	@echo ""
+	@echo "=== Running tests with coverage ==="
+	@$(MAKE) test-coverage
 	@echo ""
 	@echo "Quality checks complete"
 

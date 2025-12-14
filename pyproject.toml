@@ -7,7 +7,7 @@ name = "asitop"
 version = "0.0.22"
 description = "Performance monitoring CLI tool for Apple Silicon"
 readme = "README.md"
-requires-python = ">=3.8.1"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 keywords = ["asitop", "apple silicon", "performance", "monitoring"]
 authors = [
@@ -15,11 +15,11 @@ authors = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
 ]
@@ -35,8 +35,8 @@ test = [
     "pytest-mock>=3.10.0",
     "mock>=5.0.0",
     "coverage>=7.0.0",
-    "pylint>=2.15.0",
-    "flake8>=6.0.0",
+    "ruff>=0.8.0",
+    "black>=24.0.0",
     "mypy>=1.0.0",
     "types-psutil>=5.9.0",
 ]
@@ -80,21 +80,27 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
+strict_optional = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+# Allow dynamic typing for flexibility
+allow_untyped_defs = true
+allow_incomplete_defs = true
+# Disable strict checks that are too noisy for this codebase
+disable_error_code = ["var-annotated", "assignment"]
 
-[tool.pylint.messages_control]
-max-line-length = 100
-disable = [
-    "C0111",  # missing-docstring
-    "C0103",  # invalid-name
-]
+[tool.ruff]
+# Set line length to match previous flake8/pylint config
+line-length = 100
+target-version = "py310"
 
-[tool.flake8]
-max-line-length = 100
+# Exclude patterns
 exclude = [
     ".git",
     "__pycache__",
@@ -102,4 +108,66 @@ exclude = [
     "dist",
     ".eggs",
     "*.egg-info",
+    ".venv",
+    "venv",
 ]
+
+[tool.ruff.lint]
+# Enable rule sets that cover flake8 and pylint functionality
+select = [
+    "E",      # pycodestyle errors (flake8)
+    "W",      # pycodestyle warnings (flake8)
+    "F",      # pyflakes (flake8)
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "PL",     # pylint rules
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules that match previous pylint disables
+ignore = [
+    "D",       # pydocstyle (missing-docstring equivalent to pylint C0111)
+    "PLR0913", # Too many arguments
+    "PLR2004", # Magic value used in comparison
+    "SIM108",  # Use ternary operator (can reduce readability)
+    "F403",    # Star imports used in utils pattern
+    "F405",    # May be undefined from star imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Tests can use assert statements, have longer functions, and use imports inside functions
+# Also allow unused variables, try-except-pass patterns, and naming conventions in tests
+"tests/*" = ["PLR2004", "PLR0915", "PLC0415", "F841", "SIM105", "N806", "RUF059"]
+# Main module can have more complexity and star imports
+"asitop/asitop.py" = ["PLR0912", "PLR0915", "E501"]
+
+[tool.ruff.lint.pylint]
+# Match previous pylint max-line-length
+max-args = 7
+max-branches = 15
+max-returns = 6
+max-statements = 50
+
+[tool.ruff.lint.isort]
+known-first-party = ["asitop"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312", "py313", "py314"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''

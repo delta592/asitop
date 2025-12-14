@@ -5,7 +5,7 @@ Get up and running with asitop development in 3 simple steps!
 ## Prerequisites
 
 - macOS with Apple Silicon (M1, M1 Pro, M1 Max, M1 Ultra, or M2)
-- Python 3.8.1 or higher
+- **Python 3.10 or higher** (required)
 - uv (fast Python package manager)
 - make (comes with Xcode Command Line Tools)
 
@@ -28,7 +28,7 @@ make install-dev
 This runs `uv sync --extra test`, which:
 - Creates a virtual environment at `./.venv/`
 - Installs all production dependencies (dashing, psutil)
-- Installs all test dependencies (pytest, coverage, linters)
+- Installs all test dependencies (pytest, coverage, Ruff, Black, Mypy)
 - Uses `uv.lock` for reproducible builds
 - Is 10-100x faster than traditional pip
 
@@ -126,7 +126,11 @@ Most useful commands:
 - `make test` - Run all tests
 - `make test-coverage` - Run tests with coverage
 - `make run` - Run asitop with sudo
-- `make check` - Run tests and linters
+- `make lint` - Run Ruff linter
+- `make fix` - Auto-fix linting issues
+- `make format` - Format code with Black
+- `make type-check` - Run Mypy type checker
+- `make check` - Run all quality checks (lint, format, type, tests)
 - `make clean` - Clean everything
 
 ## Project Structure

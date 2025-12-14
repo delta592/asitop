@@ -16,7 +16,12 @@
       "Bash(uv run asitop --help:*)",
       "Bash(uv run pytest:*)",
       "Bash(make test:*)",
-      "Bash(uv build:*)"
+      "Bash(uv build:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run black:*)",
+      "Bash(uv run:*)",
+      "Bash(make check:*)",
+      "Bash(ls:*)"
     ]
   }
 }

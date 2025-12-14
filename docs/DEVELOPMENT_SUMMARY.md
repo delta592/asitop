@@ -75,9 +75,12 @@ The project now uses **uv** for fast, reliable dependency management:
 - `make run-nosudo` - Run without sudo upfront
 
 **Quality:**
-- `make lint` - Run flake8 and pylint
-- `make format` - Auto-format with autopep8
-- `make check` - Run all quality checks
+- `make lint` - Run Ruff linter
+- `make fix` - Auto-fix linting issues with Ruff
+- `make format` - Format code with Black
+- `make format-check` - Check code formatting
+- `make type-check` - Run Mypy type checker
+- `make check` - Run all quality checks (lint, format, type, tests)
 
 **Cleanup:**
 - `make clean` - Remove all generated files (.venv, build, dist)
@@ -108,9 +111,10 @@ Usage:
 
 **pyproject.toml** - Central project configuration (PEP 517/518/621)
 - Project metadata and dependencies
+- Requires Python 3.10 or later
 - Optional test dependencies via [project.optional-dependencies]
 - Entry points for CLI (asitop command)
-- Tool configuration (pytest, coverage, mypy, pylint, flake8)
+- Tool configuration (pytest, coverage, mypy, ruff, black)
 - Replaces: setup.py, requirements.txt, requirements-test.txt, pytest.ini, .coveragerc
 
 **uv.lock** - Lock file for reproducible builds
@@ -126,10 +130,10 @@ Usage:
 ### 5. GitHub Actions Workflow
 
 **.github/workflows/tests.yml** - CI/CD configuration
-- Test matrix for Python 3.8-3.11
+- Test matrix for Python 3.10+
 - Automated testing on push/PR
 - Coverage reporting to Codecov
-- Linting checks (flake8, pylint, mypy)
+- Code quality checks (Ruff, Black, Mypy)
 
 ### 6. Comprehensive Documentation
 
@@ -363,8 +367,8 @@ The test suite follows these principles:
 
 The GitHub Actions workflow:
 - Runs on push and PR
-- Tests Python 3.8, 3.9, 3.10, 3.11
-- Checks code quality (linting)
+- Tests Python 3.10, 3.11, 3.12, 3.13, 3.14
+- Checks code quality (Ruff, Black, Mypy)
 - Reports coverage to Codecov
 - Fails if tests fail or coverage < threshold
 

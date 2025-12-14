@@ -225,23 +225,56 @@ You can also pass arguments:
 
 ## Code Quality Commands
 
-### Run Linters
+### Run Linter (Ruff)
 
 ```bash
 make lint
 ```
 
-Runs flake8 and pylint to check code quality:
-- flake8: Checks for syntax errors and PEP 8 violations
-- pylint: More thorough code analysis
+Runs Ruff to check code quality:
+- Fast Python linter (10-100x faster than flake8/pylint)
+- Checks for syntax errors, PEP 8 violations, and code smells
+- Includes rules from flake8, pylint, isort, and more
 
-### Format Code
+### Auto-Fix Linting Issues
+
+```bash
+make fix
+```
+
+Automatically fixes linting issues that Ruff can safely correct:
+- Import sorting
+- Unused imports
+- Code style issues
+- Many PEP 8 violations
+
+### Format Code (Black)
 
 ```bash
 make format
 ```
 
-Automatically formats code using autopep8 to follow PEP 8.
+Formats code using Black, the uncompromising Python formatter:
+- Consistent code style across the project
+- Line length: 100 characters
+- Automatic formatting
+
+### Check Code Formatting
+
+```bash
+make format-check
+```
+
+Checks if code is formatted correctly without making changes.
+Use before committing to ensure code passes CI checks.
+
+### Run Type Checker (Mypy)
+
+```bash
+make type-check
+```
+
+Runs Mypy to check type annotations and catch type errors.
 
 ### Run All Quality Checks
 
@@ -249,11 +282,13 @@ Automatically formats code using autopep8 to follow PEP 8.
 make check
 ```
 
-Runs:
-1. All tests with coverage
-2. All linters
+Runs complete quality check suite:
+1. Ruff linter
+2. Black format check
+3. Mypy type check
+4. All tests with coverage
 
-Use this before committing code!
+**Use this before committing code!**
 
 ## Cleanup Commands
 
@@ -579,12 +614,18 @@ $ vim asitop/utils.py  # Edit code
 
 ```bash
 $ make check
-=== Running tests ===
-========================= 67 passed in 0.48s =========================
+=== Running Ruff linter ===
+All checks passed!
 
-=== Running linters ===
-asitop/asitop.py:45:1: W293 blank line contains whitespace
-asitop/utils.py:156:1: C0301 Line too long (82/79)
+=== Checking code formatting with Black ===
+All done! ✨ 🍰 ✨
+8 files would be left unchanged.
+
+=== Running Mypy type checker ===
+Success: no issues found in 4 source files
+
+=== Running tests with coverage ===
+========================= 74 passed in 0.27s =========================
 
 Quality checks complete
 ```

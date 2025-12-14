@@ -5,11 +5,9 @@ This module tests the main application logic including argument parsing,
 UI initialization, and the main monitoring loop integration.
 """
 
-import unittest
 import sys
-from typing import List
-from unittest.mock import patch, MagicMock, call
-from io import StringIO
+import unittest
+from unittest.mock import MagicMock, patch
 
 
 class TestArgumentParsing(unittest.TestCase):
@@ -23,19 +21,17 @@ class TestArgumentParsing(unittest.TestCase):
         show_cores, and max_count parameters.
         """
         # Import happens after sys.argv is set to avoid arg parse errors
-        test_args = ['asitop']
-        with patch.object(sys, 'argv', test_args):
-            from asitop import asitop
+        test_args = ["asitop"]
+        with patch.object(sys, "argv", test_args):
             # Force re-parsing by accessing the module-level args
             import argparse
-            parser = argparse.ArgumentParser(
-                description='asitop: Performance monitoring CLI tool'
-            )
-            parser.add_argument('--interval', type=int, default=1)
-            parser.add_argument('--color', type=int, default=2)
-            parser.add_argument('--avg', type=int, default=30)
-            parser.add_argument('--show_cores', type=bool, default=False)
-            parser.add_argument('--max_count', type=int, default=0)
+
+            parser = argparse.ArgumentParser(description="asitop: Performance monitoring CLI tool")
+            parser.add_argument("--interval", type=int, default=1)
+            parser.add_argument("--color", type=int, default=2)
+            parser.add_argument("--avg", type=int, default=30)
+            parser.add_argument("--show_cores", type=bool, default=False)
+            parser.add_argument("--max_count", type=int, default=0)
 
             args = parser.parse_args([])
 
@@ -53,10 +49,11 @@ class TestArgumentParsing(unittest.TestCase):
         default value.
         """
         import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--interval', type=int, default=1)
 
-        args = parser.parse_args(['--interval', '5'])
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--interval", type=int, default=1)
+
+        args = parser.parse_args(["--interval", "5"])
 
         self.assertEqual(args.interval, 5)
 
@@ -67,10 +64,11 @@ class TestArgumentParsing(unittest.TestCase):
         Ensures --color parameter accepts values in range 0-8.
         """
         import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--color', type=int, default=2)
 
-        args = parser.parse_args(['--color', '5'])
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--color", type=int, default=2)
+
+        args = parser.parse_args(["--color", "5"])
 
         self.assertEqual(args.color, 5)
 
@@ -81,10 +79,11 @@ class TestArgumentParsing(unittest.TestCase):
         Validates --avg parameter for setting the rolling average window.
         """
         import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--avg', type=int, default=30)
 
-        args = parser.parse_args(['--avg', '60'])
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--avg", type=int, default=30)
+
+        args = parser.parse_args(["--avg", "60"])
 
         self.assertEqual(args.avg, 60)
 
@@ -96,10 +95,11 @@ class TestArgumentParsing(unittest.TestCase):
         restart frequency.
         """
         import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--max_count', type=int, default=0)
 
-        args = parser.parse_args(['--max_count', '500'])
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--max_count", type=int, default=0)
+
+        args = parser.parse_args(["--max_count", "500"])
 
         self.assertEqual(args.max_count, 500)
 
@@ -114,19 +114,23 @@ class TestMainFunction(unittest.TestCase):
         Verifies that the main function prints welcome messages,
         initializes SOC info, and starts powermetrics process.
         """
-        test_args = ['asitop', '--interval', '1']
-        with patch.object(sys, 'argv', test_args):
+        test_args = ["asitop", "--interval", "1"]
+        with patch.object(sys, "argv", test_args):
             # Reload module with patched argv
             import importlib
+
             import asitop.asitop as asitop_module
+
             importlib.reload(asitop_module)
 
-            with patch('builtins.print') as mock_print, \
-                 patch('asitop.asitop.get_soc_info') as mock_get_soc, \
-                 patch('asitop.asitop.run_powermetrics_process') as mock_run_pm, \
-                 patch('asitop.asitop.parse_powermetrics') as mock_parse_pm, \
-                 patch('asitop.asitop.clear_console') as mock_clear, \
-                 patch('asitop.asitop.time.sleep') as mock_sleep:
+            with (
+                patch("builtins.print") as mock_print,
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.clear_console") as mock_clear,
+                patch("asitop.asitop.time.sleep") as mock_sleep,
+            ):
 
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -137,21 +141,29 @@ class TestMainFunction(unittest.TestCase):
                     "cpu_max_power": 20,
                     "gpu_max_power": 20,
                     "cpu_max_bw": 70,
-                    "gpu_max_bw": 70
+                    "gpu_max_bw": 70,
                 }
                 mock_process = MagicMock()
                 mock_run_pm.return_value = mock_process
 
                 # Mock first reading to allow loop to start, then raise to exit
                 mock_reading = (
-                    {"E-Cluster_active": 50, "P-Cluster_active": 60,
-                     "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
-                     "e_core": [0, 1], "p_core": [2, 3],
-                     "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1],
+                        "p_core": [2, 3],
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
                     {"active": 70, "freq_MHz": 1296},
                     "Nominal",
                     None,
-                    1234567890
+                    1234567890,
                 )
 
                 def mock_parse_pm_func(timecode):
@@ -180,16 +192,20 @@ class TestMainFunction(unittest.TestCase):
         Ensures get_soc_info is called during initialization to
         gather system information.
         """
-        test_args = ['asitop']
-        with patch.object(sys, 'argv', test_args):
+        test_args = ["asitop"]
+        with patch.object(sys, "argv", test_args):
             import importlib
+
             import asitop.asitop as asitop_module
+
             importlib.reload(asitop_module)
 
-            with patch('asitop.asitop.get_soc_info') as mock_get_soc, \
-                 patch('asitop.asitop.run_powermetrics_process') as mock_run, \
-                 patch('asitop.asitop.parse_powermetrics') as mock_parse, \
-                 patch('asitop.asitop.time.sleep') as mock_sleep:
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse,
+                patch("asitop.asitop.time.sleep") as mock_sleep,
+            ):
 
                 mock_get_soc.return_value = {
                     "name": "Apple M1 Max",
@@ -200,20 +216,28 @@ class TestMainFunction(unittest.TestCase):
                     "cpu_max_power": 30,
                     "gpu_max_power": 60,
                     "cpu_max_bw": 250,
-                    "gpu_max_bw": 400
+                    "gpu_max_bw": 400,
                 }
 
                 mock_run.return_value = MagicMock()
                 # parse_powermetrics needs to return valid data for get_reading to work
                 mock_reading = (
-                    {"E-Cluster_active": 50, "P-Cluster_active": 60,
-                     "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
-                     "e_core": [0, 1], "p_core": [2, 3],
-                     "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1],
+                        "p_core": [2, 3],
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
                     {"active": 70, "freq_MHz": 1296},
                     "Nominal",
                     None,
-                    1234567890
+                    1234567890,
                 )
                 mock_parse.return_value = mock_reading
 
@@ -505,17 +529,21 @@ class TestMainLoopEdgeCases(unittest.TestCase):
         Validates that powermetrics process is restarted when iteration
         count reaches the restart_interval.
         """
-        test_args = ['asitop', '--max_count', '5']
-        with patch.object(sys, 'argv', test_args):
+        test_args = ["asitop", "--max_count", "5"]
+        with patch.object(sys, "argv", test_args):
             import importlib
+
             import asitop.asitop as asitop_module
+
             importlib.reload(asitop_module)
 
-            with patch('asitop.asitop.get_soc_info') as mock_get_soc, \
-                 patch('asitop.asitop.run_powermetrics_process') as mock_run_pm, \
-                 patch('asitop.asitop.parse_powermetrics') as mock_parse_pm, \
-                 patch('asitop.asitop.clear_console'), \
-                 patch('asitop.asitop.time.sleep'):
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.clear_console"),
+                patch("asitop.asitop.time.sleep"),
+            ):
 
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -526,7 +554,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                     "cpu_max_power": 20,
                     "gpu_max_power": 20,
                     "cpu_max_bw": 70,
-                    "gpu_max_bw": 70
+                    "gpu_max_bw": 70,
                 }
 
                 mock_process = MagicMock()
@@ -534,17 +562,26 @@ class TestMainLoopEdgeCases(unittest.TestCase):
 
                 # Return data for first few iterations, then raise to exit
                 mock_reading = (
-                    {"E-Cluster_active": 50, "P-Cluster_active": 60,
-                     "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
-                     "e_core": [0, 1], "p_core": [2, 3],
-                     "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1],
+                        "p_core": [2, 3],
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
                     {"active": 70, "freq_MHz": 1296},
                     "Nominal",
                     None,
-                    1234567890
+                    1234567890,
                 )
 
                 call_count = [0]
+
                 def mock_parse_side_effect(timecode):
                     call_count[0] += 1
                     if call_count[0] <= 7:  # Return data for 7 iterations to test restart at 5
@@ -567,17 +604,21 @@ class TestMainLoopEdgeCases(unittest.TestCase):
 
         Verifies thermal throttle detection works for Moderate/Heavy states.
         """
-        test_args = ['asitop']
-        with patch.object(sys, 'argv', test_args):
+        test_args = ["asitop"]
+        with patch.object(sys, "argv", test_args):
             import importlib
+
             import asitop.asitop as asitop_module
+
             importlib.reload(asitop_module)
 
-            with patch('asitop.asitop.get_soc_info') as mock_get_soc, \
-                 patch('asitop.asitop.run_powermetrics_process') as mock_run_pm, \
-                 patch('asitop.asitop.parse_powermetrics') as mock_parse_pm, \
-                 patch('asitop.asitop.clear_console'), \
-                 patch('asitop.asitop.time.sleep'):
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.clear_console"),
+                patch("asitop.asitop.time.sleep"),
+            ):
 
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -588,7 +629,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                     "cpu_max_power": 20,
                     "gpu_max_power": 20,
                     "cpu_max_bw": 70,
-                    "gpu_max_bw": 70
+                    "gpu_max_bw": 70,
                 }
 
                 mock_process = MagicMock()
@@ -596,17 +637,26 @@ class TestMainLoopEdgeCases(unittest.TestCase):
 
                 # Return data with Moderate thermal pressure
                 mock_reading = (
-                    {"E-Cluster_active": 50, "P-Cluster_active": 60,
-                     "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
-                     "e_core": [0, 1], "p_core": [2, 3],
-                     "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1],
+                        "p_core": [2, 3],
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
                     {"active": 70, "freq_MHz": 1296},
                     "Moderate",  # Non-nominal thermal pressure
                     None,
-                    1234567890
+                    1234567890,
                 )
 
                 call_count = [0]
+
                 def mock_parse_side_effect(timecode):
                     call_count[0] += 1
                     if call_count[0] == 1:
@@ -624,5 +674,5 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                 self.assertTrue(True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

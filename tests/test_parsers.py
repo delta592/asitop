@@ -6,7 +6,7 @@ powermetrics output, including thermal pressure, bandwidth, CPU, and GPU data.
 """
 
 import unittest
-from typing import Dict, Any
+from typing import Any
 
 
 class TestParseThermalPressure(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestParseThermalPressure(unittest.TestCase):
         """
         from asitop.parsers import parse_thermal_pressure
 
-        mock_data: Dict[str, str] = {"thermal_pressure": "Nominal"}
+        mock_data: dict[str, str] = {"thermal_pressure": "Nominal"}
         result = parse_thermal_pressure(mock_data)
         self.assertEqual(result, "Nominal")
 
@@ -33,7 +33,7 @@ class TestParseThermalPressure(unittest.TestCase):
         """
         from asitop.parsers import parse_thermal_pressure
 
-        mock_data: Dict[str, str] = {"thermal_pressure": "Moderate"}
+        mock_data: dict[str, str] = {"thermal_pressure": "Moderate"}
         result = parse_thermal_pressure(mock_data)
         self.assertEqual(result, "Moderate")
 
@@ -45,7 +45,7 @@ class TestParseThermalPressure(unittest.TestCase):
         """
         from asitop.parsers import parse_thermal_pressure
 
-        mock_data: Dict[str, str] = {"thermal_pressure": "Heavy"}
+        mock_data: dict[str, str] = {"thermal_pressure": "Heavy"}
         result = parse_thermal_pressure(mock_data)
         self.assertEqual(result, "Heavy")
 
@@ -62,7 +62,7 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_bandwidth_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "bandwidth_counters": [
                 {"name": "DCS RD", "value": 1000000000},
                 {"name": "DCS WR", "value": 2000000000},
@@ -84,7 +84,7 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_bandwidth_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "bandwidth_counters": [
                 {"name": "PCPU0 DCS RD", "value": 1000000000},
                 {"name": "PCPU1 DCS RD", "value": 2000000000},
@@ -105,7 +105,7 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_bandwidth_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "bandwidth_counters": [
                 {"name": "GFX DCS RD", "value": 5000000000},
                 {"name": "GFX DCS WR", "value": 3000000000},
@@ -125,7 +125,7 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_bandwidth_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "bandwidth_counters": [
                 {"name": "ISP DCS RD", "value": 1000000000},
                 {"name": "ISP DCS WR", "value": 1000000000},
@@ -135,7 +135,7 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         }
         result = parse_bandwidth_metrics(mock_data)
 
-        expected_media = (1.0 + 1.0 + 2.0 + 2.0)
+        expected_media = 1.0 + 1.0 + 2.0 + 2.0
         self.assertAlmostEqual(result["MEDIA DCS"], expected_media, places=2)
 
     def test_parse_bandwidth_metrics_empty(self) -> None:
@@ -147,7 +147,7 @@ class TestParseBandwidthMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_bandwidth_metrics
 
-        mock_data: Dict[str, Any] = {"bandwidth_counters": []}
+        mock_data: dict[str, Any] = {"bandwidth_counters": []}
         result = parse_bandwidth_metrics(mock_data)
 
         self.assertEqual(result["DCS RD"], 0)
@@ -167,7 +167,7 @@ class TestParseCPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_cpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "processor": {
                 "clusters": [
                     {
@@ -177,7 +177,7 @@ class TestParseCPUMetrics(unittest.TestCase):
                         "cpus": [
                             {"cpu": 0, "freq_hz": 2064000000, "idle_ratio": 0.7},
                             {"cpu": 1, "freq_hz": 2064000000, "idle_ratio": 0.9},
-                        ]
+                        ],
                     },
                     {
                         "name": "P-Cluster",
@@ -186,8 +186,8 @@ class TestParseCPUMetrics(unittest.TestCase):
                         "cpus": [
                             {"cpu": 2, "freq_hz": 3228000000, "idle_ratio": 0.2},
                             {"cpu": 3, "freq_hz": 3228000000, "idle_ratio": 0.4},
-                        ]
-                    }
+                        ],
+                    },
                 ],
                 "ane_energy": 1000,
                 "cpu_energy": 5000,
@@ -215,45 +215,45 @@ class TestParseCPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_cpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "processor": {
                 "clusters": [
                     {
                         "name": "E0-Cluster",
                         "freq_hz": 2064000000,
                         "idle_ratio": 0.5,
-                        "cpus": [{"cpu": 0, "freq_hz": 2064000000, "idle_ratio": 0.5}]
+                        "cpus": [{"cpu": 0, "freq_hz": 2064000000, "idle_ratio": 0.5}],
                     },
                     {
                         "name": "E1-Cluster",
                         "freq_hz": 2064000000,
                         "idle_ratio": 0.7,
-                        "cpus": [{"cpu": 1, "freq_hz": 2064000000, "idle_ratio": 0.7}]
+                        "cpus": [{"cpu": 1, "freq_hz": 2064000000, "idle_ratio": 0.7}],
                     },
                     {
                         "name": "P0-Cluster",
                         "freq_hz": 3000000000,
                         "idle_ratio": 0.2,
-                        "cpus": [{"cpu": 2, "freq_hz": 3000000000, "idle_ratio": 0.2}]
+                        "cpus": [{"cpu": 2, "freq_hz": 3000000000, "idle_ratio": 0.2}],
                     },
                     {
                         "name": "P1-Cluster",
                         "freq_hz": 3100000000,
                         "idle_ratio": 0.3,
-                        "cpus": [{"cpu": 3, "freq_hz": 3100000000, "idle_ratio": 0.3}]
+                        "cpus": [{"cpu": 3, "freq_hz": 3100000000, "idle_ratio": 0.3}],
                     },
                     {
                         "name": "P2-Cluster",
                         "freq_hz": 3200000000,
                         "idle_ratio": 0.4,
-                        "cpus": [{"cpu": 4, "freq_hz": 3200000000, "idle_ratio": 0.4}]
+                        "cpus": [{"cpu": 4, "freq_hz": 3200000000, "idle_ratio": 0.4}],
                     },
                     {
                         "name": "P3-Cluster",
                         "freq_hz": 3300000000,
                         "idle_ratio": 0.5,
-                        "cpus": [{"cpu": 5, "freq_hz": 3300000000, "idle_ratio": 0.5}]
-                    }
+                        "cpus": [{"cpu": 5, "freq_hz": 3300000000, "idle_ratio": 0.5}],
+                    },
                 ],
                 "ane_energy": 2000,
                 "cpu_energy": 10000,
@@ -283,15 +283,10 @@ class TestParseCPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_cpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "processor": {
                 "clusters": [
-                    {
-                        "name": "E-Cluster",
-                        "freq_hz": 2000000000,
-                        "idle_ratio": 0.5,
-                        "cpus": []
-                    }
+                    {"name": "E-Cluster", "freq_hz": 2000000000, "idle_ratio": 0.5, "cpus": []}
                 ],
                 "ane_energy": 5000,
                 "cpu_energy": 10000,
@@ -315,7 +310,7 @@ class TestParseCPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_cpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "processor": {
                 "clusters": [
                     {
@@ -325,7 +320,7 @@ class TestParseCPUMetrics(unittest.TestCase):
                         "cpus": [
                             {"cpu": 0, "freq_hz": 2800000000, "idle_ratio": 0.3},
                             {"cpu": 1, "freq_hz": 3200000000, "idle_ratio": 0.7},
-                        ]
+                        ],
                     }
                 ],
                 "ane_energy": 1000,
@@ -354,7 +349,7 @@ class TestParseGPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_gpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "gpu": {
                 "freq_hz": 1296000000,
                 "idle_ratio": 0.25,
@@ -373,7 +368,7 @@ class TestParseGPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_gpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "gpu": {
                 "freq_hz": 0,
                 "idle_ratio": 1.0,
@@ -393,7 +388,7 @@ class TestParseGPUMetrics(unittest.TestCase):
         """
         from asitop.parsers import parse_gpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "gpu": {
                 "freq_hz": 1398000000,
                 "idle_ratio": 0.0,
@@ -417,21 +412,21 @@ class TestParseCPUMetricsEdgeCases(unittest.TestCase):
         """
         from asitop.parsers import parse_cpu_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "processor": {
                 "clusters": [
                     {
                         "name": "P0-Cluster",
                         "freq_hz": 3000000000,
                         "idle_ratio": 0.2,
-                        "cpus": [{"cpu": 0, "freq_hz": 3000000000, "idle_ratio": 0.2}]
+                        "cpus": [{"cpu": 0, "freq_hz": 3000000000, "idle_ratio": 0.2}],
                     },
                     {
                         "name": "P1-Cluster",
                         "freq_hz": 3100000000,
                         "idle_ratio": 0.4,
-                        "cpus": [{"cpu": 1, "freq_hz": 3100000000, "idle_ratio": 0.4}]
-                    }
+                        "cpus": [{"cpu": 1, "freq_hz": 3100000000, "idle_ratio": 0.4}],
+                    },
                 ],
                 "ane_energy": 1000,
                 "cpu_energy": 5000,
@@ -459,7 +454,7 @@ class TestParseBandwidthMetricsExtended(unittest.TestCase):
         """
         from asitop.parsers import parse_bandwidth_metrics
 
-        mock_data: Dict[str, Any] = {
+        mock_data: dict[str, Any] = {
             "bandwidth_counters": [
                 {"name": "DCS RD", "value": 1000000000},
                 {"name": "DCS WR", "value": 2000000000},
@@ -490,9 +485,9 @@ class TestParseBandwidthMetricsExtended(unittest.TestCase):
         self.assertAlmostEqual(result["GFX DCS WR"], 2.5, places=2)
 
         # Check media aggregation
-        expected_media = (0.1 + 0.15 + 0.2 + 0.25 + 0.3 + 0.35 + 0.05 + 0.075)
+        expected_media = 0.1 + 0.15 + 0.2 + 0.25 + 0.3 + 0.35 + 0.05 + 0.075
         self.assertAlmostEqual(result["MEDIA DCS"], expected_media, places=2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

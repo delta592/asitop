@@ -5,16 +5,16 @@ This module tests utility functions including powermetrics parsing,
 RAM metrics collection, SOC information gathering, and file operations.
 """
 
-import unittest
 import os
-import tempfile
 import plistlib
-from typing import Dict, Any
-from unittest.mock import patch, MagicMock, mock_open
+import tempfile
+import unittest
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 
 class TestConvertToGB(unittest.TestCase):
-    """Test cases for convert_to_GB function."""
+    """Test cases for convert_to_gb function."""
 
     def test_convert_to_gb_basic(self) -> None:
         """
@@ -23,10 +23,10 @@ class TestConvertToGB(unittest.TestCase):
         Verifies correct conversion using factor of 1024^3 and
         rounding to 1 decimal place.
         """
-        from asitop.utils import convert_to_GB
+        from asitop.utils import convert_to_gb
 
         bytes_value = 1073741824
-        result = convert_to_GB(bytes_value)
+        result = convert_to_gb(bytes_value)
         self.assertEqual(result, 1.0)
 
     def test_convert_to_gb_zero(self) -> None:
@@ -35,9 +35,9 @@ class TestConvertToGB(unittest.TestCase):
 
         Edge case: Ensures function handles zero input correctly.
         """
-        from asitop.utils import convert_to_GB
+        from asitop.utils import convert_to_gb
 
-        result = convert_to_GB(0)
+        result = convert_to_gb(0)
         self.assertEqual(result, 0.0)
 
     def test_convert_to_gb_large_value(self) -> None:
@@ -46,10 +46,10 @@ class TestConvertToGB(unittest.TestCase):
 
         Validates correct handling of large memory sizes (e.g., 64GB).
         """
-        from asitop.utils import convert_to_GB
+        from asitop.utils import convert_to_gb
 
         bytes_value = 68719476736
-        result = convert_to_GB(bytes_value)
+        result = convert_to_gb(bytes_value)
         self.assertEqual(result, 64.0)
 
     def test_convert_to_gb_fractional(self) -> None:
@@ -58,17 +58,17 @@ class TestConvertToGB(unittest.TestCase):
 
         Ensures proper rounding for non-integer GB results.
         """
-        from asitop.utils import convert_to_GB
+        from asitop.utils import convert_to_gb
 
         bytes_value = 1610612736
-        result = convert_to_GB(bytes_value)
+        result = convert_to_gb(bytes_value)
         self.assertAlmostEqual(result, 1.5, places=1)
 
 
 class TestClearConsole(unittest.TestCase):
     """Test cases for clear_console function."""
 
-    @patch('os.system')
+    @patch("os.system")
     def test_clear_console_calls_system(self, mock_system: MagicMock) -> None:
         """
         Test that clear_console calls os.system with 'clear' command.
@@ -79,7 +79,7 @@ class TestClearConsole(unittest.TestCase):
         from asitop.utils import clear_console
 
         clear_console()
-        mock_system.assert_called_once_with('clear')
+        mock_system.assert_called_once_with("clear")
 
 
 class TestParsePowermetrics(unittest.TestCase):
@@ -94,17 +94,12 @@ class TestParsePowermetrics(unittest.TestCase):
         """
         from asitop.utils import parse_powermetrics
 
-        mock_plist_data: Dict[str, Any] = {
+        mock_plist_data: dict[str, Any] = {
             "timestamp": 1234567890,
             "thermal_pressure": "Nominal",
             "processor": {
                 "clusters": [
-                    {
-                        "name": "E-Cluster",
-                        "freq_hz": 2064000000,
-                        "idle_ratio": 0.5,
-                        "cpus": []
-                    }
+                    {"name": "E-Cluster", "freq_hz": 2064000000, "idle_ratio": 0.5, "cpus": []}
                 ],
                 "ane_energy": 1000,
                 "cpu_energy": 5000,
@@ -114,16 +109,16 @@ class TestParsePowermetrics(unittest.TestCase):
             "gpu": {
                 "freq_hz": 1296000000,
                 "idle_ratio": 0.3,
-            }
+            },
         }
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
             try:
                 plistlib.dump(mock_plist_data, tf)
                 tf.flush()
 
                 # Parse the file directly using the full path as base_path and empty timecode
-                result = parse_powermetrics(path=tf.name, timecode='')
+                result = parse_powermetrics(path=tf.name, timecode="")
 
                 self.assertIsNotNone(result)
                 self.assertIsInstance(result, tuple)
@@ -146,10 +141,7 @@ class TestParsePowermetrics(unittest.TestCase):
         """
         from asitop.utils import parse_powermetrics
 
-        result = parse_powermetrics(
-            path='/nonexistent/path',
-            timecode='test'
-        )
+        result = parse_powermetrics(path="/nonexistent/path", timecode="test")
         self.assertFalse(result)
 
     def test_parse_powermetrics_multiple_entries(self) -> None:
@@ -161,51 +153,45 @@ class TestParsePowermetrics(unittest.TestCase):
         """
         from asitop.utils import parse_powermetrics
 
-        mock_plist_1: Dict[str, Any] = {
+        mock_plist_1: dict[str, Any] = {
             "timestamp": 1000,
             "thermal_pressure": "Nominal",
             "processor": {
-                "clusters": [{
-                    "name": "E-Cluster",
-                    "freq_hz": 2000000000,
-                    "idle_ratio": 0.5,
-                    "cpus": []
-                }],
+                "clusters": [
+                    {"name": "E-Cluster", "freq_hz": 2000000000, "idle_ratio": 0.5, "cpus": []}
+                ],
                 "ane_energy": 1000,
                 "cpu_energy": 5000,
                 "gpu_energy": 3000,
                 "combined_power": 9000,
             },
-            "gpu": {"freq_hz": 1200000000, "idle_ratio": 0.3}
+            "gpu": {"freq_hz": 1200000000, "idle_ratio": 0.3},
         }
 
-        mock_plist_2: Dict[str, Any] = {
+        mock_plist_2: dict[str, Any] = {
             "timestamp": 2000,
             "thermal_pressure": "Moderate",
             "processor": {
-                "clusters": [{
-                    "name": "E-Cluster",
-                    "freq_hz": 2100000000,
-                    "idle_ratio": 0.4,
-                    "cpus": []
-                }],
+                "clusters": [
+                    {"name": "E-Cluster", "freq_hz": 2100000000, "idle_ratio": 0.4, "cpus": []}
+                ],
                 "ane_energy": 2000,
                 "cpu_energy": 6000,
                 "gpu_energy": 4000,
                 "combined_power": 12000,
             },
-            "gpu": {"freq_hz": 1300000000, "idle_ratio": 0.2}
+            "gpu": {"freq_hz": 1300000000, "idle_ratio": 0.2},
         }
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
             try:
                 plistlib.dump(mock_plist_1, tf)
-                tf.write(b'\x00')
+                tf.write(b"\x00")
                 plistlib.dump(mock_plist_2, tf)
                 tf.flush()
 
                 # Parse the file directly using the full path as base_path and empty timecode
-                result = parse_powermetrics(path=tf.name, timecode='')
+                result = parse_powermetrics(path=tf.name, timecode="")
 
                 self.assertIsNotNone(result)
                 _, _, thermal, _, timestamp = result
@@ -218,13 +204,9 @@ class TestParsePowermetrics(unittest.TestCase):
 class TestGetRamMetricsDict(unittest.TestCase):
     """Test cases for get_ram_metrics_dict function."""
 
-    @patch('psutil.virtual_memory')
-    @patch('psutil.swap_memory')
-    def test_get_ram_metrics_dict_basic(
-        self,
-        mock_swap: MagicMock,
-        mock_ram: MagicMock
-    ) -> None:
+    @patch("psutil.virtual_memory")
+    @patch("psutil.swap_memory")
+    def test_get_ram_metrics_dict_basic(self, mock_swap: MagicMock, mock_ram: MagicMock) -> None:
         """
         Test basic RAM and swap metrics collection.
 
@@ -251,13 +233,9 @@ class TestGetRamMetricsDict(unittest.TestCase):
         self.assertEqual(result["swap_total_GB"], 2.0)
         self.assertEqual(result["swap_used_GB"], 1.0)
 
-    @patch('psutil.virtual_memory')
-    @patch('psutil.swap_memory')
-    def test_get_ram_metrics_dict_no_swap(
-        self,
-        mock_swap: MagicMock,
-        mock_ram: MagicMock
-    ) -> None:
+    @patch("psutil.virtual_memory")
+    @patch("psutil.swap_memory")
+    def test_get_ram_metrics_dict_no_swap(self, mock_swap: MagicMock, mock_ram: MagicMock) -> None:
         """
         Test RAM metrics when swap is disabled.
 
@@ -280,13 +258,9 @@ class TestGetRamMetricsDict(unittest.TestCase):
         self.assertEqual(result["swap_total_GB"], 0.0)
         self.assertIsNone(result["swap_free_percent"])
 
-    @patch('psutil.virtual_memory')
-    @patch('psutil.swap_memory')
-    def test_get_ram_metrics_dict_full_ram(
-        self,
-        mock_swap: MagicMock,
-        mock_ram: MagicMock
-    ) -> None:
+    @patch("psutil.virtual_memory")
+    @patch("psutil.swap_memory")
+    def test_get_ram_metrics_dict_full_ram(self, mock_swap: MagicMock, mock_ram: MagicMock) -> None:
         """
         Test RAM metrics when memory is nearly full.
 
@@ -313,7 +287,7 @@ class TestGetRamMetricsDict(unittest.TestCase):
 class TestGetCPUInfo(unittest.TestCase):
     """Test cases for get_cpu_info function."""
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_cpu_info_basic(self, mock_popen: MagicMock) -> None:
         """
         Test extraction of CPU information from sysctl.
@@ -335,7 +309,7 @@ class TestGetCPUInfo(unittest.TestCase):
         self.assertEqual(result["machdep.cpu.brand_string"], "Apple M1")
         self.assertEqual(result["machdep.cpu.core_count"], "8")
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_cpu_info_m1_max(self, mock_popen: MagicMock) -> None:
         """
         Test CPU info extraction for M1 Max chip.
@@ -344,10 +318,7 @@ class TestGetCPUInfo(unittest.TestCase):
         """
         from asitop.utils import get_cpu_info
 
-        mock_output = (
-            "machdep.cpu.brand_string: Apple M1 Max\n"
-            "machdep.cpu.core_count: 10\n"
-        )
+        mock_output = "machdep.cpu.brand_string: Apple M1 Max\n" "machdep.cpu.core_count: 10\n"
         mock_popen.return_value.read.return_value = mock_output
 
         result = get_cpu_info()
@@ -359,7 +330,7 @@ class TestGetCPUInfo(unittest.TestCase):
 class TestGetCoreCounts(unittest.TestCase):
     """Test cases for get_core_counts function."""
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_core_counts_basic(self, mock_popen: MagicMock) -> None:
         """
         Test extraction of performance and efficiency core counts.
@@ -381,7 +352,7 @@ class TestGetCoreCounts(unittest.TestCase):
         self.assertEqual(result["hw.perflevel0.logicalcpu"], 6)
         self.assertEqual(result["hw.perflevel1.logicalcpu"], 2)
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_core_counts_m1_ultra(self, mock_popen: MagicMock) -> None:
         """
         Test core count extraction for M1 Ultra.
@@ -391,10 +362,7 @@ class TestGetCoreCounts(unittest.TestCase):
         """
         from asitop.utils import get_core_counts
 
-        mock_output = (
-            "hw.perflevel0.logicalcpu: 16\n"
-            "hw.perflevel1.logicalcpu: 4\n"
-        )
+        mock_output = "hw.perflevel0.logicalcpu: 16\n" "hw.perflevel1.logicalcpu: 4\n"
         mock_popen.return_value.read.return_value = mock_output
 
         result = get_core_counts()
@@ -406,7 +374,7 @@ class TestGetCoreCounts(unittest.TestCase):
 class TestGetGPUCores(unittest.TestCase):
     """Test cases for get_gpu_cores function."""
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_gpu_cores_basic(self, mock_popen: MagicMock) -> None:
         """
         Test extraction of GPU core count from system_profiler.
@@ -423,7 +391,7 @@ class TestGetGPUCores(unittest.TestCase):
 
         self.assertEqual(result, 8)
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_gpu_cores_high_count(self, mock_popen: MagicMock) -> None:
         """
         Test GPU core extraction for high-end configurations.
@@ -440,7 +408,7 @@ class TestGetGPUCores(unittest.TestCase):
 
         self.assertEqual(result, 32)
 
-    @patch('os.popen')
+    @patch("os.popen")
     def test_get_gpu_cores_parse_error(self, mock_popen: MagicMock) -> None:
         """
         Test GPU core extraction when parsing fails.
@@ -461,14 +429,11 @@ class TestGetGPUCores(unittest.TestCase):
 class TestGetSOCInfo(unittest.TestCase):
     """Test cases for get_soc_info function."""
 
-    @patch('asitop.utils.get_gpu_cores')
-    @patch('asitop.utils.get_core_counts')
-    @patch('asitop.utils.get_cpu_info')
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_m1(
-        self,
-        mock_cpu_info: MagicMock,
-        mock_core_counts: MagicMock,
-        mock_gpu_cores: MagicMock
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
         """
         Test SOC info extraction for base M1 chip.
@@ -480,11 +445,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         mock_cpu_info.return_value = {
             "machdep.cpu.brand_string": "Apple M1",
-            "machdep.cpu.core_count": "8"
+            "machdep.cpu.core_count": "8",
         }
         mock_core_counts.return_value = {
             "hw.perflevel0.logicalcpu": 4,
-            "hw.perflevel1.logicalcpu": 4
+            "hw.perflevel1.logicalcpu": 4,
         }
         mock_gpu_cores.return_value = 8
 
@@ -500,14 +465,11 @@ class TestGetSOCInfo(unittest.TestCase):
         self.assertEqual(result["cpu_max_bw"], 70)
         self.assertEqual(result["gpu_max_bw"], 70)
 
-    @patch('asitop.utils.get_gpu_cores')
-    @patch('asitop.utils.get_core_counts')
-    @patch('asitop.utils.get_cpu_info')
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_m1_max(
-        self,
-        mock_cpu_info: MagicMock,
-        mock_core_counts: MagicMock,
-        mock_gpu_cores: MagicMock
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
         """
         Test SOC info extraction for M1 Max chip.
@@ -518,11 +480,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         mock_cpu_info.return_value = {
             "machdep.cpu.brand_string": "Apple M1 Max",
-            "machdep.cpu.core_count": "10"
+            "machdep.cpu.core_count": "10",
         }
         mock_core_counts.return_value = {
             "hw.perflevel0.logicalcpu": 8,
-            "hw.perflevel1.logicalcpu": 2
+            "hw.perflevel1.logicalcpu": 2,
         }
         mock_gpu_cores.return_value = 32
 
@@ -534,14 +496,11 @@ class TestGetSOCInfo(unittest.TestCase):
         self.assertEqual(result["cpu_max_bw"], 250)
         self.assertEqual(result["gpu_max_bw"], 400)
 
-    @patch('asitop.utils.get_gpu_cores')
-    @patch('asitop.utils.get_core_counts')
-    @patch('asitop.utils.get_cpu_info')
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_m1_ultra(
-        self,
-        mock_cpu_info: MagicMock,
-        mock_core_counts: MagicMock,
-        mock_gpu_cores: MagicMock
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
         """
         Test SOC info extraction for M1 Ultra chip.
@@ -552,11 +511,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         mock_cpu_info.return_value = {
             "machdep.cpu.brand_string": "Apple M1 Ultra",
-            "machdep.cpu.core_count": "20"
+            "machdep.cpu.core_count": "20",
         }
         mock_core_counts.return_value = {
             "hw.perflevel0.logicalcpu": 16,
-            "hw.perflevel1.logicalcpu": 4
+            "hw.perflevel1.logicalcpu": 4,
         }
         mock_gpu_cores.return_value = 64
 
@@ -568,14 +527,11 @@ class TestGetSOCInfo(unittest.TestCase):
         self.assertEqual(result["cpu_max_bw"], 500)
         self.assertEqual(result["gpu_max_bw"], 800)
 
-    @patch('asitop.utils.get_gpu_cores')
-    @patch('asitop.utils.get_core_counts')
-    @patch('asitop.utils.get_cpu_info')
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_m2(
-        self,
-        mock_cpu_info: MagicMock,
-        mock_core_counts: MagicMock,
-        mock_gpu_cores: MagicMock
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
         """
         Test SOC info extraction for M2 chip.
@@ -586,11 +542,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         mock_cpu_info.return_value = {
             "machdep.cpu.brand_string": "Apple M2",
-            "machdep.cpu.core_count": "8"
+            "machdep.cpu.core_count": "8",
         }
         mock_core_counts.return_value = {
             "hw.perflevel0.logicalcpu": 4,
-            "hw.perflevel1.logicalcpu": 4
+            "hw.perflevel1.logicalcpu": 4,
         }
         mock_gpu_cores.return_value = 10
 
@@ -602,14 +558,11 @@ class TestGetSOCInfo(unittest.TestCase):
         self.assertEqual(result["cpu_max_bw"], 100)
         self.assertEqual(result["gpu_max_bw"], 100)
 
-    @patch('asitop.utils.get_gpu_cores')
-    @patch('asitop.utils.get_core_counts')
-    @patch('asitop.utils.get_cpu_info')
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_unknown_chip(
-        self,
-        mock_cpu_info: MagicMock,
-        mock_core_counts: MagicMock,
-        mock_gpu_cores: MagicMock
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
         """
         Test SOC info extraction for unknown/future chips.
@@ -621,11 +574,11 @@ class TestGetSOCInfo(unittest.TestCase):
 
         mock_cpu_info.return_value = {
             "machdep.cpu.brand_string": "Apple M5",
-            "machdep.cpu.core_count": "12"
+            "machdep.cpu.core_count": "12",
         }
         mock_core_counts.return_value = {
             "hw.perflevel0.logicalcpu": 8,
-            "hw.perflevel1.logicalcpu": 4
+            "hw.perflevel1.logicalcpu": 4,
         }
         mock_gpu_cores.return_value = 16
 
@@ -637,14 +590,11 @@ class TestGetSOCInfo(unittest.TestCase):
         self.assertEqual(result["cpu_max_bw"], 70)
         self.assertEqual(result["gpu_max_bw"], 70)
 
-    @patch('asitop.utils.get_gpu_cores')
-    @patch('asitop.utils.get_core_counts')
-    @patch('asitop.utils.get_cpu_info')
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_missing_core_counts(
-        self,
-        mock_cpu_info: MagicMock,
-        mock_core_counts: MagicMock,
-        mock_gpu_cores: MagicMock
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
         """
         Test SOC info when perflevel data is unavailable.
@@ -656,7 +606,7 @@ class TestGetSOCInfo(unittest.TestCase):
 
         mock_cpu_info.return_value = {
             "machdep.cpu.brand_string": "Apple M1",
-            "machdep.cpu.core_count": "8"
+            "machdep.cpu.core_count": "8",
         }
         mock_core_counts.return_value = {}
         mock_gpu_cores.return_value = 8
@@ -670,14 +620,11 @@ class TestGetSOCInfo(unittest.TestCase):
 class TestRunPowermetricsProcess(unittest.TestCase):
     """Test cases for run_powermetrics_process function."""
 
-    @patch('glob.glob')
-    @patch('os.remove')
-    @patch('subprocess.Popen')
+    @patch("glob.glob")
+    @patch("os.remove")
+    @patch("subprocess.Popen")
     def test_run_powermetrics_process_basic(
-        self,
-        mock_popen: MagicMock,
-        mock_remove: MagicMock,
-        mock_glob: MagicMock
+        self, mock_popen: MagicMock, mock_remove: MagicMock, mock_glob: MagicMock
     ) -> None:
         """
         Test starting powermetrics process with default parameters.
@@ -700,14 +647,11 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         self.assertIn("--samplers", call_args)
         self.assertIn("cpu_power,gpu_power,thermal", call_args)
 
-    @patch('glob.glob')
-    @patch('os.remove')
-    @patch('subprocess.Popen')
+    @patch("glob.glob")
+    @patch("os.remove")
+    @patch("subprocess.Popen")
     def test_run_powermetrics_process_cleanup(
-        self,
-        mock_popen: MagicMock,
-        mock_remove: MagicMock,
-        mock_glob: MagicMock
+        self, mock_popen: MagicMock, mock_remove: MagicMock, mock_glob: MagicMock
     ) -> None:
         """
         Test that old powermetrics files are cleaned up.
@@ -717,10 +661,7 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         """
         from asitop.utils import run_powermetrics_process
 
-        old_files = [
-            "/tmp/asitop_powermetrics123",
-            "/tmp/asitop_powermetrics456"
-        ]
+        old_files = ["/tmp/asitop_powermetrics123", "/tmp/asitop_powermetrics456"]
         mock_glob.return_value = old_files
         mock_popen.return_value = MagicMock()
 
@@ -730,14 +671,11 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         for old_file in old_files:
             mock_remove.assert_any_call(old_file)
 
-    @patch('glob.glob')
-    @patch('os.remove')
-    @patch('subprocess.Popen')
+    @patch("glob.glob")
+    @patch("os.remove")
+    @patch("subprocess.Popen")
     def test_run_powermetrics_process_custom_interval(
-        self,
-        mock_popen: MagicMock,
-        mock_remove: MagicMock,
-        mock_glob: MagicMock
+        self, mock_popen: MagicMock, mock_remove: MagicMock, mock_glob: MagicMock
     ) -> None:
         """
         Test powermetrics with custom sampling interval.
@@ -766,20 +704,21 @@ class TestParsePowermetricsErrors(unittest.TestCase):
         Ensures function returns False when all plist entries
         in the file are corrupted or invalid.
         """
-        from asitop.utils import parse_powermetrics
-        import tempfile
         import os
+        import tempfile
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+        from asitop.utils import parse_powermetrics
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
             try:
                 # Write invalid plist data
                 tf.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
-                tf.write(b'<plist>\n')
-                tf.write(b'<dict>\n')
-                tf.write(b'CORRUPTED DATA HERE\n')
+                tf.write(b"<plist>\n")
+                tf.write(b"<dict>\n")
+                tf.write(b"CORRUPTED DATA HERE\n")
                 tf.flush()
 
-                result = parse_powermetrics(path=tf.name, timecode='')
+                result = parse_powermetrics(path=tf.name, timecode="")
 
                 self.assertFalse(result)
             finally:
@@ -791,17 +730,18 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
         Edge case: File has null bytes but no valid plist data.
         """
-        from asitop.utils import parse_powermetrics
-        import tempfile
         import os
+        import tempfile
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+        from asitop.utils import parse_powermetrics
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
             try:
                 # Write only null bytes
-                tf.write(b'\x00\x00\x00\x00')
+                tf.write(b"\x00\x00\x00\x00")
                 tf.flush()
 
-                result = parse_powermetrics(path=tf.name, timecode='')
+                result = parse_powermetrics(path=tf.name, timecode="")
 
                 self.assertFalse(result)
             finally:
@@ -814,39 +754,37 @@ class TestParsePowermetricsErrors(unittest.TestCase):
         Verifies function skips corrupted entries and successfully
         parses the first valid one it finds.
         """
-        from asitop.utils import parse_powermetrics
+        import os
         import plistlib
         import tempfile
-        import os
 
-        mock_plist_data: Dict[str, Any] = {
+        from asitop.utils import parse_powermetrics
+
+        mock_plist_data: dict[str, Any] = {
             "timestamp": 9999,
             "thermal_pressure": "Heavy",
             "processor": {
-                "clusters": [{
-                    "name": "E-Cluster",
-                    "freq_hz": 2500000000,
-                    "idle_ratio": 0.3,
-                    "cpus": []
-                }],
+                "clusters": [
+                    {"name": "E-Cluster", "freq_hz": 2500000000, "idle_ratio": 0.3, "cpus": []}
+                ],
                 "ane_energy": 3000,
                 "cpu_energy": 7000,
                 "gpu_energy": 5000,
                 "combined_power": 15000,
             },
-            "gpu": {"freq_hz": 1400000000, "idle_ratio": 0.1}
+            "gpu": {"freq_hz": 1400000000, "idle_ratio": 0.1},
         }
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
             try:
                 # Write corrupted data first
-                tf.write(b'CORRUPTED')
-                tf.write(b'\x00')
+                tf.write(b"CORRUPTED")
+                tf.write(b"\x00")
                 # Then write valid plist
                 plistlib.dump(mock_plist_data, tf)
                 tf.flush()
 
-                result = parse_powermetrics(path=tf.name, timecode='')
+                result = parse_powermetrics(path=tf.name, timecode="")
 
                 self.assertIsNotNone(result)
                 self.assertIsInstance(result, tuple)
@@ -857,5 +795,5 @@ class TestParsePowermetricsErrors(unittest.TestCase):
                 os.unlink(tf.name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
