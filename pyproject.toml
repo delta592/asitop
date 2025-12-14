@@ -259,16 +259,45 @@ docstring-code-format = true
 docstring-code-line-length = "dynamic"
 
 [tool.black]
+# Line length consistent with ruff
 line-length = 100
-target-version = ["py310"]
-include = '\.pyi?$'
-extend-exclude = '''
+
+# Target the minimum supported Python version
+target-version = ["py310", "py311", "py312", "py313", "py314"]
+
+# Enable preview features for modern formatting (opt-in to upcoming changes)
+preview = false
+
+# Magic trailing comma handling (respect existing trailing commas)
+skip-magic-trailing-comma = false
+
+# Skip string normalization to preserve existing quote style if needed
+# Set to true (default) to normalize to double quotes
+skip-string-normalization = false
+
+# Force exclude patterns (comprehensive exclusion list)
+force-exclude = '''
 /(
-  # directories
-  \.eggs
+    \.direnv
+  | \.eggs
   | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.nox
+  | \.pytest_cache
+  | \.ruff_cache
+  | \.tox
   | \.venv
+  | venv
+  | \.svn
+  | \.ipynb_checkpoints
+  | _build
+  | buck-out
   | build
   | dist
+  | __pypackages__
 )/
 '''
+
+# File patterns to include
+include = '\.pyi?$'
