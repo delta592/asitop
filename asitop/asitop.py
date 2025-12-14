@@ -1,4 +1,5 @@
 import argparse
+import math
 import subprocess
 import time
 from collections import deque
@@ -47,9 +48,9 @@ def main() -> subprocess.Popen:
     )
     parser.add_argument(
         "--interval",
-        type=int,
-        default=1,
-        help="Display interval and sampling interval for powermetrics (seconds)",
+        type=float,
+        default=1.0,
+        help="Display interval and sampling interval for powermetrics (seconds, float OK)",
     )
     parser.add_argument("--color", type=int, default=2, help="Choose display color (0~8)")
     parser.add_argument(
@@ -58,6 +59,12 @@ def main() -> subprocess.Popen:
     parser.add_argument("--show_cores", type=bool, default=False, help="Choose show cores mode")
     parser.add_argument(
         "--max_count", type=int, default=0, help="Max show count to restart powermetrics"
+    )
+    parser.add_argument(
+        "--nice",
+        type=int,
+        default=10,
+        help="nice value for powermetrics (lower is higher priority, default 10)",
     )
     args = parser.parse_args()
     print("\nASITOP - Performance monitoring CLI tool for Apple Silicon")
@@ -203,7 +210,8 @@ def main() -> subprocess.Popen:
 
     timecode = str(int(time.time()))
 
-    powermetrics_process = run_powermetrics_process(timecode, interval=args.interval * 1000)
+    sample_ms = max(100, int(args.interval * 1000))
+    powermetrics_process = run_powermetrics_process(timecode, interval=sample_ms, nice=args.nice)
 
     print("\n[3/3] Waiting for first reading...\n")
 
@@ -232,10 +240,6 @@ def main() -> subprocess.Popen:
     # If user hasn't set max_count, default to restarting every 300 iterations
     restart_interval = args.max_count if args.max_count > 0 else 300
 
-    # Track wall-clock time for consistent 2-second refresh
-    display_interval = 2.0  # Fixed 2 second wall-clock refresh
-    next_display_time = time.monotonic() + display_interval
-
     try:
         while True:
             if count >= restart_interval:
@@ -243,7 +247,7 @@ def main() -> subprocess.Popen:
                 powermetrics_process.terminate()
                 timecode = str(int(time.time()))
                 powermetrics_process = run_powermetrics_process(
-                    timecode, interval=args.interval * 1000
+                    timecode, interval=max(100, int(args.interval * 1000)), nice=args.nice
                 )
             count += 1
             ready = parse_powermetrics(timecode=timecode)
@@ -422,10 +426,20 @@ def main() -> subprocess.Popen:
                     )
                     cpu_power_chart.append(cpu_power_percent)
 
-                    gpu_power_percent = int(
+                    gpu_power_percent = (
                         cpu_metrics_dict["gpu_W"] / args.interval / gpu_max_power * 100
                     )
                     gpu_power_w = cpu_metrics_dict["gpu_W"] / args.interval
+                    # Some powermetrics versions omit GPU energy in the processor sampler.
+                    # If we have no rail reading, estimate power from utilization so the chart
+                    # still shows activity.
+                    if gpu_power_w <= 0 and gpu_util_percent > 0:
+                        gpu_power_w = gpu_util_percent / 100 * gpu_max_power
+                        gpu_power_percent = gpu_power_w / gpu_max_power * 100
+                    # Avoid rounding tiny non-zero power to 0% which hides the chart
+                    if 0 < gpu_power_percent < 1:
+                        gpu_power_percent = 1
+                    gpu_power_percent = min(100, max(0, math.ceil(gpu_power_percent)))
                     gpu_peak_power = max(gpu_peak_power, gpu_power_w)
                     avg_gpu_power_list.append(gpu_power_w)
                     avg_gpu_power = get_avg(avg_gpu_power_list)
@@ -435,14 +449,9 @@ def main() -> subprocess.Popen:
                     )
                     gpu_power_chart.append(gpu_power_percent)
 
-            # Only update display at fixed wall-clock intervals regardless of data jitter
-            current_time = time.monotonic()
-            if current_time >= next_display_time:
-                ui.display()
-                next_display_time = current_time + display_interval
-
-            # Sleep briefly to avoid busy-waiting
-            time.sleep(0.1)
+            # Refresh UI and wait for the next interval (match powermetrics cadence)
+            ui.display()
+            time.sleep(max(0.05, args.interval))
 
     except KeyboardInterrupt:
         print("Stopping...")

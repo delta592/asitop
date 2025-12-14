@@ -127,51 +127,35 @@ def parse_powermetrics(
 ) -> tuple[dict, dict, str, None, int] | Literal[False]:
     """Parse powermetrics plist file and extract metrics.
 
-    Args:
-        path: Path to powermetrics output file
-        timecode: Timecode suffix for file
-
-    Returns:
-        Tuple of (cpu_metrics, gpu_metrics, thermal_pressure, bandwidth_metrics, timestamp)
-        or False if parsing fails
+    This mirrors the lightweight approach from commit 74ebe2cb: read the file,
+    split on null bytes, and parse the newest complete plist. If the last entry
+    is incomplete, fall back to the previous one.
     """
+    data: list[bytes] | None = None
     try:
         with open(path + timecode, "rb") as fp:
-            # Instead of reading entire file, seek to end and read last chunk
-            # This prevents memory from growing as file grows
-            fp.seek(0, 2)  # Seek to end
-            file_size = fp.tell()
-
-            # Read last 50KB which should contain the latest plist entries
-            # Adjust if needed, but this prevents unbounded memory growth
-            chunk_size = min(50000, file_size)
-            fp.seek(max(0, file_size - chunk_size))
-            data = fp.read()
-
-        # Split by null bytes to get plist entries
-        data_parts = data.split(b"\x00")
-
-        # Try to parse the last entry
-        for i in range(len(data_parts) - 1, -1, -1):
-            if len(data_parts[i]) > 0:
-                try:
-                    powermetrics_parse = plistlib.loads(data_parts[i])
-                    thermal_pressure = parse_thermal_pressure(powermetrics_parse)
-                    cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
-                    gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
-                    bandwidth_metrics = None
-                    timestamp = powermetrics_parse["timestamp"]
-                    return (
-                        cpu_metrics_dict,
-                        gpu_metrics_dict,
-                        thermal_pressure,
-                        bandwidth_metrics,
-                        timestamp,
-                    )
-                except (KeyError, plistlib.InvalidFileException, Exception):
-                    # Try previous entry if current one is corrupted/incomplete
-                    continue
-
+            blob = fp.read()
+        data = blob.split(b"\x00")
+        # Try last entry; if corrupted, try the previous one.
+        for part in (data[-1], data[-2] if len(data) > 1 else b""):
+            if not part:
+                continue
+            try:
+                powermetrics_parse = plistlib.loads(part)
+                thermal_pressure = parse_thermal_pressure(powermetrics_parse)
+                cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
+                gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
+                bandwidth_metrics = None
+                timestamp = powermetrics_parse["timestamp"]
+                return (
+                    cpu_metrics_dict,
+                    gpu_metrics_dict,
+                    thermal_pressure,
+                    bandwidth_metrics,
+                    timestamp,
+                )
+            except Exception:
+                continue
         return False
     except OSError:
         return False

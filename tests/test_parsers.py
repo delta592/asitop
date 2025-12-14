@@ -301,6 +301,55 @@ class TestParseCPUMetrics(unittest.TestCase):
         self.assertEqual(result["gpu_W"], 8.0)
         self.assertEqual(result["package_W"], 23.0)
 
+    def test_parse_cpu_metrics_gpu_energy_fallback(self) -> None:
+        """
+        Prefer gpu_energy from GPU sampler when processor sampler reports zero.
+
+        Ensures the GPU power chart still receives data when powermetrics
+        only reports GPU energy in the gpu block.
+        """
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {"name": "E-Cluster", "freq_hz": 2000000000, "idle_ratio": 0.5, "cpus": []}
+                ],
+                "ane_energy": 5000,
+                "cpu_energy": 10000,
+                "gpu_energy": 0,
+                "combined_power": 23000,
+            },
+            "gpu": {"freq_hz": 1400000000, "idle_ratio": 0.1, "gpu_energy": 9000},
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        self.assertEqual(result["gpu_W"], 9.0)
+
+    def test_parse_cpu_metrics_gpu_energy_prefers_gpu_sampler(self) -> None:
+        """
+        Prefer gpu_energy from GPU sampler even when processor sampler has data.
+
+        Ensures higher fidelity GPU energy readings are used when available.
+        """
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {"name": "E-Cluster", "freq_hz": 2000000000, "idle_ratio": 0.5, "cpus": []}
+                ],
+                "ane_energy": 5000,
+                "cpu_energy": 10000,
+                "gpu_energy": 4000,  # lower reading from processor block
+                "combined_power": 23000,
+            },
+            "gpu": {"freq_hz": 1400000000, "idle_ratio": 0.1, "gpu_energy": 10000},
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        self.assertEqual(result["gpu_W"], 10.0)
+
     def test_parse_cpu_metrics_individual_cores(self) -> None:
         """
         Test parsing of individual core metrics.
@@ -398,6 +447,30 @@ class TestParseGPUMetrics(unittest.TestCase):
 
         self.assertEqual(result["freq_MHz"], 1398)  # 1398 MHz = 1398000000 Hz
         self.assertEqual(result["active"], 100)
+
+    def test_parse_gpu_metrics_freq_in_mhz(self) -> None:
+        """
+        Test parsing GPU metrics when powermetrics reports MHz directly.
+
+        Newer powermetrics builds return freq_hz as a MHz float. Ensure we
+        normalize correctly instead of zeroing out the frequency.
+        """
+        from asitop.parsers import parse_gpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "gpu": {
+                "freq_hz": 777.178,
+                "idle_ratio": 0.4,
+                "dvfm_states": [
+                    {"freq": 338, "used_ratio": 0.0},
+                    {"freq": 796, "used_ratio": 0.6},
+                ],
+            }
+        }
+        result = parse_gpu_metrics(mock_data)
+
+        self.assertEqual(result["freq_MHz"], 777)
+        self.assertEqual(result["active"], 60)
 
 
 class TestParseCPUMetricsEdgeCases(unittest.TestCase):

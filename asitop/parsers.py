@@ -215,8 +215,18 @@ def parse_cpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, Any]:
     # power
     cpu_metric_dict["ane_W"] = cpu_metrics["ane_energy"] / 1000
     # cpu_metric_dict["dram_W"] = cpu_metrics["dram_energy"]/1000
+
+    # powermetrics historically reports GPU rail energy under the processor sampler.
+    # Newer builds also expose it in the GPU sampler. Prefer the GPU sampler when it
+    # has data; otherwise fall back to the processor sampler so the GPU power chart
+    # always gets a usable value.
+    gpu_energy_proc = cpu_metrics.get("gpu_energy")
+    gpu_energy_gpu = powermetrics_parse.get("gpu", {}).get("gpu_energy")
+    gpu_energy = gpu_energy_gpu if gpu_energy_gpu not in (None, 0) else gpu_energy_proc
+    gpu_energy = gpu_energy or 0
+
     cpu_metric_dict["cpu_W"] = cpu_metrics["cpu_energy"] / 1000
-    cpu_metric_dict["gpu_W"] = cpu_metrics["gpu_energy"] / 1000
+    cpu_metric_dict["gpu_W"] = gpu_energy / 1000
     cpu_metric_dict["package_W"] = cpu_metrics["combined_power"] / 1000
     return cpu_metric_dict
 
@@ -231,8 +241,35 @@ def parse_gpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, int]:
         Dictionary with GPU frequency in MHz and utilization percentage
     """
     gpu_metrics = powermetrics_parse["gpu"]
+    raw_freq = gpu_metrics.get("freq_hz", 0) or 0
+
+    try:
+        freq_value = float(raw_freq)
+    except (TypeError, ValueError):
+        freq_value = 0.0
+
+    # Newer powermetrics builds expose GPU frequency in MHz instead of Hz.
+    # Accept either by detecting the magnitude and normalizing to MHz.
+    if freq_value > 1e5:
+        freq_mhz = int(freq_value / 1e6)
+    else:
+        freq_mhz = int(freq_value)
+
+    # If frequency is still zero but DVFM residency is present, derive
+    # an average from the residency table to avoid showing "N/A".
+    if freq_mhz == 0 and "dvfm_states" in gpu_metrics:
+        dvfm_states = gpu_metrics["dvfm_states"]
+        weighted_freq = sum(
+            state.get("freq", 0) * state.get("used_ratio", 0) for state in dvfm_states
+        )
+        total_ratio = sum(state.get("used_ratio", 0) for state in dvfm_states)
+        if total_ratio > 0:
+            freq_mhz = int(weighted_freq / total_ratio)
+
+    active_percent = int((1 - gpu_metrics.get("idle_ratio", 0)) * 100)
+    active_percent = max(0, min(active_percent, 100))
     gpu_metrics_dict = {
-        "freq_MHz": int(gpu_metrics["freq_hz"] / 1e6),  # Convert Hz to MHz
-        "active": int((1 - gpu_metrics["idle_ratio"]) * 100),
+        "freq_MHz": freq_mhz,
+        "active": active_percent,
     }
     return gpu_metrics_dict
