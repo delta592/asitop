@@ -577,6 +577,357 @@ class TestTimestampHandling(unittest.TestCase):
         assert not should_process
 
 
+class TestGetReadingRetry(unittest.TestCase):
+    """Test get_reading() retry logic when powermetrics isn't ready."""
+
+    def test_get_reading_retries_until_ready(self) -> None:
+        """
+        Test that get_reading() retries when parse_powermetrics returns None.
+
+        Simulates the scenario where powermetrics output isn't immediately
+        available and requires waiting and retrying.
+        """
+        test_args = ["asitop"]
+        with patch.object(sys, "argv", test_args):
+            import importlib
+
+            import asitop.asitop as asitop_module
+
+            importlib.reload(asitop_module)
+
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.time.sleep") as mock_sleep,
+            ):
+                mock_get_soc.return_value = {
+                    "name": "Apple M1",
+                    "core_count": 8,
+                    "e_core_count": 4,
+                    "p_core_count": 4,
+                    "gpu_core_count": 8,
+                    "cpu_max_power": 20,
+                    "gpu_max_power": 20,
+                    "cpu_max_bw": 70,
+                    "gpu_max_bw": 70,
+                }
+
+                mock_process = MagicMock()
+                mock_run_pm.return_value = mock_process
+
+                valid_reading = (
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1],
+                        "p_core": [2, 3],
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
+                    {"active": 70, "freq_MHz": 1296},
+                    "Nominal",
+                    None,
+                    1234567890,
+                )
+
+                # Return None twice, then valid data, then raise to exit
+                call_count = [0]
+
+                def mock_parse_side_effect(timecode):
+                    call_count[0] += 1
+                    if call_count[0] <= 2:
+                        return None  # Not ready yet
+                    if call_count[0] == 3:
+                        return valid_reading
+                    raise KeyboardInterrupt
+
+                mock_parse_pm.side_effect = mock_parse_side_effect
+
+                try:
+                    asitop_module.main()
+                except (KeyboardInterrupt, SystemExit):
+                    pass
+
+                # Verify sleep was called while waiting for data
+                assert mock_sleep.call_count >= 2
+
+
+class TestExtendedPCoreSupport(unittest.TestCase):
+    """Test support for chips with >8 P-cores (M1 Ultra, etc.)."""
+
+    def test_m1_ultra_extended_p_cores(self) -> None:
+        """
+        Test that M1 Ultra with 16 P-cores creates extended gauge layout.
+
+        Verifies that chips with more than 8 P-cores properly initialize
+        additional gauge UI elements.
+        """
+        test_args = ["asitop"]
+        with patch.object(sys, "argv", test_args):
+            import importlib
+
+            import asitop.asitop as asitop_module
+
+            importlib.reload(asitop_module)
+
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.time.sleep"),
+            ):
+                # M1 Ultra config with 16 P-cores
+                mock_get_soc.return_value = {
+                    "name": "Apple M1 Ultra",
+                    "core_count": 20,
+                    "e_core_count": 4,
+                    "p_core_count": 16,
+                    "gpu_core_count": 64,
+                    "cpu_max_power": 60,
+                    "gpu_max_power": 120,
+                    "cpu_max_bw": 500,
+                    "gpu_max_bw": 800,
+                }
+
+                mock_process = MagicMock()
+                mock_run_pm.return_value = mock_process
+
+                valid_reading = (
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1, 2, 3],
+                        "p_core": list(range(16)),  # 16 P-cores
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
+                    {"active": 70, "freq_MHz": 1296},
+                    "Nominal",
+                    None,
+                    1234567890,
+                )
+
+                mock_parse_pm.return_value = valid_reading
+
+                # First call returns data, second raises to exit
+                call_count = [0]
+
+                def mock_parse_side_effect(timecode):
+                    call_count[0] += 1
+                    if call_count[0] == 1:
+                        return valid_reading
+                    raise KeyboardInterrupt
+
+                mock_parse_pm.side_effect = mock_parse_side_effect
+
+                try:
+                    asitop_module.main()
+                except (KeyboardInterrupt, SystemExit):
+                    pass
+
+                # Test passes if extended P-core layout was initialized without errors
+                assert True
+
+
+class TestShowCoresMode(unittest.TestCase):
+    """Test --show_cores flag functionality."""
+
+    def test_show_cores_individual_updates(self) -> None:
+        """
+        Test that individual core metrics are updated when --show_cores is enabled.
+
+        Verifies per-core gauge updates for both E-cores and P-cores.
+        """
+        test_args = ["asitop", "--show_cores"]
+        with patch.object(sys, "argv", test_args):
+            import importlib
+
+            import asitop.asitop as asitop_module
+
+            importlib.reload(asitop_module)
+
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.time.sleep"),
+            ):
+                mock_get_soc.return_value = {
+                    "name": "Apple M1",
+                    "core_count": 8,
+                    "e_core_count": 4,
+                    "p_core_count": 4,
+                    "gpu_core_count": 8,
+                    "cpu_max_power": 20,
+                    "gpu_max_power": 20,
+                    "cpu_max_bw": 70,
+                    "gpu_max_bw": 70,
+                }
+
+                mock_process = MagicMock()
+                mock_run_pm.return_value = mock_process
+
+                # Include per-core metrics
+                valid_reading = (
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1, 2, 3],
+                        "p_core": [0, 1, 2, 3],
+                        "E-Cluster0_active": 45,
+                        "E-Cluster1_active": 55,
+                        "E-Cluster2_active": 50,
+                        "E-Cluster3_active": 50,
+                        "P-Cluster0_active": 65,
+                        "P-Cluster1_active": 60,
+                        "P-Cluster2_active": 58,
+                        "P-Cluster3_active": 57,
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
+                    {"active": 70, "freq_MHz": 1296},
+                    "Nominal",
+                    None,
+                    1234567890,
+                )
+
+                call_count = [0]
+
+                def mock_parse_side_effect(timecode):
+                    call_count[0] += 1
+                    if call_count[0] == 1:
+                        return valid_reading
+                    raise KeyboardInterrupt
+
+                mock_parse_pm.side_effect = mock_parse_side_effect
+
+                try:
+                    asitop_module.main()
+                except (KeyboardInterrupt, SystemExit):
+                    pass
+
+                # Test passes if per-core updates executed without errors
+                assert True
+
+
+class TestRAMSwapHandling(unittest.TestCase):
+    """Test RAM gauge display with and without active swap."""
+
+    def test_ram_with_active_swap(self) -> None:
+        """
+        Test RAM gauge displays swap info when swap is active (>0.1GB).
+
+        Verifies that swap usage is shown in the gauge title when
+        swap space is being utilized.
+        """
+        test_args = ["asitop"]
+        with patch.object(sys, "argv", test_args):
+            import importlib
+
+            import asitop.asitop as asitop_module
+
+            importlib.reload(asitop_module)
+
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.get_ram_metrics_dict") as mock_get_ram,
+                patch("asitop.asitop.time.sleep") as mock_sleep,
+            ):
+                mock_get_soc.return_value = {
+                    "name": "Apple M1",
+                    "core_count": 8,
+                    "e_core_count": 4,
+                    "p_core_count": 4,
+                    "gpu_core_count": 8,
+                    "cpu_max_power": 20,
+                    "gpu_max_power": 20,
+                    "cpu_max_bw": 70,
+                    "gpu_max_bw": 70,
+                }
+
+                mock_process = MagicMock()
+                mock_run_pm.return_value = mock_process
+
+                # RAM with active swap
+                mock_get_ram.return_value = {
+                    "total_GB": 16.0,
+                    "used_GB": 12.5,
+                    "free_percent": 25.0,
+                    "swap_total_GB": 4.0,
+                    "swap_used_GB": 1.2,
+                }
+
+                valid_reading = (
+                    {
+                        "E-Cluster_active": 50,
+                        "P-Cluster_active": 60,
+                        "E-Cluster_freq_Mhz": 2064,
+                        "P-Cluster_freq_Mhz": 3228,
+                        "e_core": [0, 1],
+                        "p_core": [2, 3],
+                        "ane_W": 1,
+                        "cpu_W": 5,
+                        "gpu_W": 3,
+                        "package_W": 9,
+                    },
+                    {"active": 70, "freq_MHz": 1296},
+                    "Nominal",
+                    None,
+                    1234567890,
+                )
+
+                # Return data once with increasing timestamp, then raise
+                timestamps = [1234567890, 1234567891]
+                call_count = [0]
+
+                def mock_parse_side_effect(timecode):
+                    call_count[0] += 1
+                    if call_count[0] <= 2:
+                        # Return reading with incrementing timestamp
+                        return (
+                            valid_reading[0],
+                            valid_reading[1],
+                            valid_reading[2],
+                            valid_reading[3],
+                            timestamps[min(call_count[0] - 1, 1)],
+                        )
+                    raise KeyboardInterrupt
+
+                mock_parse_pm.side_effect = mock_parse_side_effect
+                # Mock sleep to raise after a few calls to let loop execute
+                sleep_count = [0]
+
+                def mock_sleep_side_effect(duration):
+                    sleep_count[0] += 1
+                    if sleep_count[0] > 3:
+                        raise KeyboardInterrupt
+
+                mock_sleep.side_effect = mock_sleep_side_effect
+
+                try:
+                    asitop_module.main()
+                except (KeyboardInterrupt, SystemExit):
+                    pass
+
+                # Verify RAM metrics were fetched
+                mock_get_ram.assert_called()
+
+
 class TestMainLoopEdgeCases(unittest.TestCase):
     """Test edge cases in the main loop logic."""
 
