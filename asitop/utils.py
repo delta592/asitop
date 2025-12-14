@@ -8,30 +8,39 @@ import plistlib
 
 
 def parse_powermetrics(path='/tmp/asitop_powermetrics', timecode="0"):
-    data = None
     try:
         with open(path+timecode, 'rb') as fp:
+            # Instead of reading entire file, seek to end and read last chunk
+            # This prevents memory from growing as file grows
+            fp.seek(0, 2)  # Seek to end
+            file_size = fp.tell()
+
+            # Read last 50KB which should contain the latest plist entries
+            # Adjust if needed, but this prevents unbounded memory growth
+            chunk_size = min(50000, file_size)
+            fp.seek(max(0, file_size - chunk_size))
             data = fp.read()
-        data = data.split(b'\x00')
-        powermetrics_parse = plistlib.loads(data[-1])
-        thermal_pressure = parse_thermal_pressure(powermetrics_parse)
-        cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
-        gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
-        #bandwidth_metrics = parse_bandwidth_metrics(powermetrics_parse)
-        bandwidth_metrics = None
-        timestamp = powermetrics_parse["timestamp"]
-        return cpu_metrics_dict, gpu_metrics_dict, thermal_pressure, bandwidth_metrics, timestamp
+
+        # Split by null bytes to get plist entries
+        data_parts = data.split(b'\x00')
+
+        # Try to parse the last entry
+        for i in range(len(data_parts) - 1, -1, -1):
+            if len(data_parts[i]) > 0:
+                try:
+                    powermetrics_parse = plistlib.loads(data_parts[i])
+                    thermal_pressure = parse_thermal_pressure(powermetrics_parse)
+                    cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
+                    gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
+                    bandwidth_metrics = None
+                    timestamp = powermetrics_parse["timestamp"]
+                    return cpu_metrics_dict, gpu_metrics_dict, thermal_pressure, bandwidth_metrics, timestamp
+                except Exception:
+                    # Try previous entry if current one is corrupted/incomplete
+                    continue
+
+        return False
     except Exception as e:
-        if data:
-            if len(data) > 1:
-                powermetrics_parse = plistlib.loads(data[-2])
-                thermal_pressure = parse_thermal_pressure(powermetrics_parse)
-                cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
-                gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
-                #bandwidth_metrics = parse_bandwidth_metrics(powermetrics_parse)
-                bandwidth_metrics = None
-                timestamp = powermetrics_parse["timestamp"]
-                return cpu_metrics_dict, gpu_metrics_dict, thermal_pressure, bandwidth_metrics, timestamp
         return False
 
 

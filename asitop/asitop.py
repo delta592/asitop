@@ -89,8 +89,15 @@ def main():
         title="Memory"
     )
 
-    cpu_power_chart = HChart(title="CPU Power", color=args.color)
-    gpu_power_chart = HChart(title="GPU Power", color=args.color)
+    cpu_power_chart = HChart(title="CPU Power", color=args.color, val=0)
+    gpu_power_chart = HChart(title="GPU Power", color=args.color, val=0)
+
+    # Limit chart history to prevent memory leak (HChart default is 500)
+    # Reduce to 200 points (about 3-5 minutes of data at 1s interval)
+    from collections import deque
+    max_chart_points = 200
+    cpu_power_chart.datapoints = deque(cpu_power_chart.datapoints, maxlen=max_chart_points)
+    gpu_power_chart.datapoints = deque(gpu_power_chart.datapoints, maxlen=max_chart_points)
     power_charts = VSplit(
         cpu_power_chart,
         gpu_power_chart,
@@ -170,16 +177,18 @@ def main():
     clear_console()
 
     count=0
+    # Restart powermetrics periodically to prevent unbounded file growth
+    # If user hasn't set max_count, default to restarting every 300 iterations
+    restart_interval = args.max_count if args.max_count > 0 else 300
     try:
         while True:
-            if args.max_count > 0:
-                if count >= args.max_count:
-                    count = 0
-                    powermetrics_process.terminate()
-                    timecode = str(int(time.time()))
-                    powermetrics_process = run_powermetrics_process(
-                        timecode, interval=args.interval * 1000)
-                count += 1
+            if count >= restart_interval:
+                count = 0
+                powermetrics_process.terminate()
+                timecode = str(int(time.time()))
+                powermetrics_process = run_powermetrics_process(
+                    timecode, interval=args.interval * 1000)
+            count += 1
             ready = parse_powermetrics(timecode=timecode)
             if ready:
                 cpu_metrics_dict, gpu_metrics_dict, thermal_pressure, bandwidth_metrics, timestamp = ready
