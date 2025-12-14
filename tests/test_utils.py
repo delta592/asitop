@@ -117,13 +117,13 @@ class TestParsePowermetrics(unittest.TestCase):
             }
         }
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False) as tf:
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
             try:
                 plistlib.dump(mock_plist_data, tf)
                 tf.flush()
 
-                base_path = tf.name.replace('0', '')
-                result = parse_powermetrics(path=base_path, timecode='0')
+                # Parse the file directly using the full path as base_path and empty timecode
+                result = parse_powermetrics(path=tf.name, timecode='')
 
                 self.assertIsNotNone(result)
                 self.assertIsInstance(result, tuple)
@@ -197,15 +197,15 @@ class TestParsePowermetrics(unittest.TestCase):
             "gpu": {"freq_hz": 1300000000, "idle_ratio": 0.2}
         }
 
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False) as tf:
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='_test') as tf:
             try:
                 plistlib.dump(mock_plist_1, tf)
                 tf.write(b'\x00')
                 plistlib.dump(mock_plist_2, tf)
                 tf.flush()
 
-                base_path = tf.name.replace('0', '')
-                result = parse_powermetrics(path=base_path, timecode='0')
+                # Parse the file directly using the full path as base_path and empty timecode
+                result = parse_powermetrics(path=tf.name, timecode='')
 
                 self.assertIsNotNone(result)
                 _, _, thermal, _, timestamp = result

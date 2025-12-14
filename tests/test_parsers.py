@@ -264,7 +264,8 @@ class TestParseCPUMetrics(unittest.TestCase):
         result = parse_cpu_metrics(mock_data)
 
         # M1 Ultra averages the dual E-clusters
-        self.assertEqual(result["E-Cluster_active"], 45)
+        # E0: idle 0.5 -> active 50%, E1: idle 0.7 -> active 30%, avg = (50+30)/2 = 40%
+        self.assertEqual(result["E-Cluster_active"], 40)
         # M1 Ultra takes max frequency from E-clusters
         self.assertEqual(result["E-Cluster_freq_Mhz"], 2064)
         # M1 Ultra averages quad P-clusters

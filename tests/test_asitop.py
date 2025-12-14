@@ -107,128 +107,125 @@ class TestArgumentParsing(unittest.TestCase):
 class TestMainFunction(unittest.TestCase):
     """Test cases for the main() function."""
 
-    @patch('asitop.asitop.time.sleep')
-    @patch('asitop.asitop.clear_console')
-    @patch('asitop.asitop.get_reading')
-    @patch('asitop.asitop.run_powermetrics_process')
-    @patch('asitop.asitop.get_soc_info')
-    @patch('builtins.print')
-    def test_main_initialization(
-        self,
-        mock_print: MagicMock,
-        mock_get_soc: MagicMock,
-        mock_run_pm: MagicMock,
-        mock_get_reading: MagicMock,
-        mock_clear: MagicMock,
-        mock_sleep: MagicMock
-    ) -> None:
+    def test_main_initialization(self) -> None:
         """
         Test main function initialization sequence.
 
         Verifies that the main function prints welcome messages,
         initializes SOC info, and starts powermetrics process.
         """
-        mock_get_soc.return_value = {
-            "name": "Apple M1",
-            "core_count": 8,
-            "e_core_count": 4,
-            "p_core_count": 4,
-            "gpu_core_count": 8,
-            "cpu_max_power": 20,
-            "gpu_max_power": 20,
-            "cpu_max_bw": 70,
-            "gpu_max_bw": 70
-        }
-        mock_process = MagicMock()
-        mock_run_pm.return_value = mock_process
-
-        # Mock first reading to allow loop to start, then raise to exit
-        mock_reading = (
-            {"E-Cluster_active": 50, "P-Cluster_active": 60,
-             "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
-             "e_core": [0, 1], "p_core": [2, 3],
-             "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
-            {"active": 70, "freq_MHz": 1296},
-            "Nominal",
-            None,
-            1234567890
-        )
-
-        def mock_get_reading_func(wait=0.1):
-            mock_get_reading_func.call_count += 1
-            if mock_get_reading_func.call_count == 1:
-                return mock_reading
-            raise KeyboardInterrupt
-
-        mock_get_reading_func.call_count = 0
-        mock_get_reading.side_effect = mock_get_reading_func
-
-        # Patch sys.argv to avoid argument parsing issues
         test_args = ['asitop', '--interval', '1']
         with patch.object(sys, 'argv', test_args):
-            # Need to reload the module to re-parse args
+            # Reload module with patched argv
             import importlib
             import asitop.asitop as asitop_module
             importlib.reload(asitop_module)
 
-            with patch('asitop.asitop.parse_powermetrics') as mock_parse:
-                mock_parse.return_value = None
+            with patch('builtins.print') as mock_print, \
+                 patch('asitop.asitop.get_soc_info') as mock_get_soc, \
+                 patch('asitop.asitop.run_powermetrics_process') as mock_run_pm, \
+                 patch('asitop.asitop.parse_powermetrics') as mock_parse_pm, \
+                 patch('asitop.asitop.clear_console') as mock_clear, \
+                 patch('asitop.asitop.time.sleep') as mock_sleep:
+
+                mock_get_soc.return_value = {
+                    "name": "Apple M1",
+                    "core_count": 8,
+                    "e_core_count": 4,
+                    "p_core_count": 4,
+                    "gpu_core_count": 8,
+                    "cpu_max_power": 20,
+                    "gpu_max_power": 20,
+                    "cpu_max_bw": 70,
+                    "gpu_max_bw": 70
+                }
+                mock_process = MagicMock()
+                mock_run_pm.return_value = mock_process
+
+                # Mock first reading to allow loop to start, then raise to exit
+                mock_reading = (
+                    {"E-Cluster_active": 50, "P-Cluster_active": 60,
+                     "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
+                     "e_core": [0, 1], "p_core": [2, 3],
+                     "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
+                    {"active": 70, "freq_MHz": 1296},
+                    "Nominal",
+                    None,
+                    1234567890
+                )
+
+                def mock_parse_pm_func(timecode):
+                    mock_parse_pm_func.call_count += 1
+                    if mock_parse_pm_func.call_count == 1:
+                        return mock_reading
+                    raise KeyboardInterrupt
+
+                mock_parse_pm_func.call_count = 0
+                mock_parse_pm.side_effect = mock_parse_pm_func
 
                 try:
                     asitop_module.main()
                 except (KeyboardInterrupt, SystemExit):
                     pass
 
-        # Verify initialization messages were printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("ASITOP" in str(call) for call in print_calls)
-        assert any("Loading" in str(call) for call in print_calls)
+                # Verify initialization messages were printed
+                print_calls = [call[0][0] for call in mock_print.call_args_list]
+                assert any("ASITOP" in str(call) for call in print_calls)
+                assert any("Loading" in str(call) for call in print_calls)
 
-    @patch('asitop.asitop.time.sleep')
-    @patch('asitop.asitop.get_soc_info')
-    def test_main_soc_info_retrieval(
-        self,
-        mock_get_soc: MagicMock,
-        mock_sleep: MagicMock
-    ) -> None:
+    def test_main_soc_info_retrieval(self) -> None:
         """
         Test that main function retrieves SOC information.
 
         Ensures get_soc_info is called during initialization to
         gather system information.
         """
-        mock_get_soc.return_value = {
-            "name": "Apple M1 Max",
-            "core_count": 10,
-            "e_core_count": 2,
-            "p_core_count": 8,
-            "gpu_core_count": 32,
-            "cpu_max_power": 30,
-            "gpu_max_power": 60,
-            "cpu_max_bw": 250,
-            "gpu_max_bw": 400
-        }
-
         test_args = ['asitop']
         with patch.object(sys, 'argv', test_args):
             import importlib
             import asitop.asitop as asitop_module
             importlib.reload(asitop_module)
 
-            with patch('asitop.asitop.run_powermetrics_process') as mock_run:
-                with patch('asitop.asitop.parse_powermetrics') as mock_parse:
-                    mock_run.return_value = MagicMock()
-                    mock_parse.return_value = None
+            with patch('asitop.asitop.get_soc_info') as mock_get_soc, \
+                 patch('asitop.asitop.run_powermetrics_process') as mock_run, \
+                 patch('asitop.asitop.parse_powermetrics') as mock_parse, \
+                 patch('asitop.asitop.time.sleep') as mock_sleep:
 
-                    # Mock sleep to raise exception after first call
-                    mock_sleep.side_effect = KeyboardInterrupt
+                mock_get_soc.return_value = {
+                    "name": "Apple M1 Max",
+                    "core_count": 10,
+                    "e_core_count": 2,
+                    "p_core_count": 8,
+                    "gpu_core_count": 32,
+                    "cpu_max_power": 30,
+                    "gpu_max_power": 60,
+                    "cpu_max_bw": 250,
+                    "gpu_max_bw": 400
+                }
 
-                    try:
-                        asitop_module.main()
-                    except (KeyboardInterrupt, SystemExit):
-                        pass
+                mock_run.return_value = MagicMock()
+                # parse_powermetrics needs to return valid data for get_reading to work
+                mock_reading = (
+                    {"E-Cluster_active": 50, "P-Cluster_active": 60,
+                     "E-Cluster_freq_Mhz": 2064, "P-Cluster_freq_Mhz": 3228,
+                     "e_core": [0, 1], "p_core": [2, 3],
+                     "ane_W": 1, "cpu_W": 5, "gpu_W": 3, "package_W": 9},
+                    {"active": 70, "freq_MHz": 1296},
+                    "Nominal",
+                    None,
+                    1234567890
+                )
+                mock_parse.return_value = mock_reading
 
-        mock_get_soc.assert_called()
+                # Mock sleep to raise exception after first call
+                mock_sleep.side_effect = KeyboardInterrupt
+
+                try:
+                    asitop_module.main()
+                except (KeyboardInterrupt, SystemExit):
+                    pass
+
+                mock_get_soc.assert_called()
 
 
 class TestDequeMemoryManagement(unittest.TestCase):
