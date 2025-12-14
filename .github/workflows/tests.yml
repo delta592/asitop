@@ -11,65 +11,71 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-test.txt
+        uv sync --extra test
 
     - name: Run tests with pytest
       run: |
-        pytest --cov=asitop --cov-report=xml --cov-report=term-missing -v
+        uv run pytest --cov=asitop --cov-report=xml --cov-report=term-missing -v
 
     - name: Check coverage threshold
       run: |
-        pytest --cov=asitop --cov-fail-under=70
+        uv run pytest --cov=asitop --cov-fail-under=70
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
 
-  lint:
+  quality:
     runs-on: macos-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.10'
 
-    - name: Install linting tools
+    - name: Install uv
       run: |
-        python -m pip install --upgrade pip
-        pip install pylint flake8 mypy
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Run flake8
+    - name: Install dependencies
       run: |
-        flake8 asitop --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 asitop --count --exit-zero --max-complexity=10 --max-line-length=79 --statistics
+        uv sync --extra test
 
-    - name: Run pylint
+    - name: Run Ruff linter
       run: |
-        pylint asitop --exit-zero
+        uv run ruff check asitop/ tests/
 
-    - name: Run mypy
+    - name: Check Black formatting
       run: |
-        mypy asitop --ignore-missing-imports --exit-zero
+        uv run black --check asitop/ tests/
+
+    - name: Run Mypy type checker
+      run: |
+        uv run mypy asitop/

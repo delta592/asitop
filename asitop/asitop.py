@@ -360,8 +360,8 @@ def main():
                     ])
                     pcpu_bw_gauge.value = pcpu_bw_percent
 
-                    gpu_bw_percent = int(
-                        (bandwidth_metrics["GFX DCS RD"] + bandwidth_metrics["GFX DCS WR"]) / max_gpu_bw * 100)
+                    gpu_bw_total = bandwidth_metrics["GFX DCS RD"] + bandwidth_metrics["GFX DCS WR"]
+                    gpu_bw_percent = int(gpu_bw_total / max_gpu_bw * 100)
                     gpu_read_GB = bandwidth_metrics["GFX DCS RD"]
                     gpu_write_GB = bandwidth_metrics["GFX DCS WR"]
                     gpu_bw_gauge.title = "".join([
@@ -381,8 +381,8 @@ def main():
                     ])
                     media_bw_gauge.value = media_bw_percent
 
-                    total_bw_gb = (
-                                          bandwidth_metrics["DCS RD"] + bandwidth_metrics["DCS WR"]) / args.interval
+                    total_bw = bandwidth_metrics["DCS RD"] + bandwidth_metrics["DCS WR"]
+                    total_bw_gb = total_bw / args.interval
                     bw_gauges.title = "".join([
                         "Memory Bandwidth: ",
                         '{0:.2f}'.format(total_bw_gb),

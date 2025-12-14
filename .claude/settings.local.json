@@ -21,7 +21,8 @@
       "Bash(uv run black:*)",
       "Bash(uv run:*)",
       "Bash(make check:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(uv pip:*)"
     ]
   }
 }
