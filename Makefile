@@ -1,0 +1,202 @@
+# Makefile for asitop
+# Provides commands for testing, running, and managing the project
+
+.PHONY: help venv install install-dev test test-verbose test-coverage \
+        test-watch clean clean-pyc clean-test run lint format check \
+        coverage-html coverage-report dist upload-test upload
+
+# Python interpreter
+PYTHON := python3
+VENV := venv
+VENV_BIN := $(VENV)/bin
+VENV_PYTHON := $(VENV_BIN)/python
+VENV_PIP := $(VENV_BIN)/pip
+VENV_PYTEST := $(VENV_BIN)/pytest
+
+# Default target
+help:
+	@echo "asitop Makefile commands:"
+	@echo ""
+	@echo "Setup commands:"
+	@echo "  make venv           Create virtual environment"
+	@echo "  make install        Install production dependencies"
+	@echo "  make install-dev    Install development and test dependencies"
+	@echo ""
+	@echo "Testing commands:"
+	@echo "  make test           Run all tests"
+	@echo "  make test-verbose   Run tests with verbose output"
+	@echo "  make test-coverage  Run tests with coverage report"
+	@echo "  make coverage-html  Generate HTML coverage report"
+	@echo "  make test-watch     Run tests on file changes (requires pytest-watch)"
+	@echo ""
+	@echo "Running commands:"
+	@echo "  make run            Run asitop with sudo (requires password)"
+	@echo "  make run-nosudo     Run asitop without sudo (will prompt later)"
+	@echo ""
+	@echo "Code quality commands:"
+	@echo "  make lint           Run linters (flake8, pylint)"
+	@echo "  make format         Format code with autopep8"
+	@echo "  make check          Run all quality checks"
+	@echo ""
+	@echo "Cleanup commands:"
+	@echo "  make clean          Remove all generated files"
+	@echo "  make clean-pyc      Remove Python cache files"
+	@echo "  make clean-test     Remove test and coverage files"
+	@echo ""
+	@echo "Distribution commands:"
+	@echo "  make dist           Build distribution packages"
+	@echo "  make upload-test    Upload to TestPyPI"
+	@echo "  make upload         Upload to PyPI"
+
+# Create virtual environment
+venv:
+	@echo "Creating virtual environment..."
+	$(PYTHON) -m venv $(VENV)
+	@echo "Virtual environment created at ./$(VENV)"
+	@echo "Activate with: source $(VENV_BIN)/activate"
+
+# Install production dependencies
+install: venv
+	@echo "Installing production dependencies..."
+	$(VENV_PIP) install --upgrade pip
+	$(VENV_PIP) install -r requirements.txt || \
+		($(VENV_PIP) install dashing psutil && echo "Installed from setup.py requirements")
+	@echo "Production dependencies installed"
+
+# Install development and test dependencies
+install-dev: install
+	@echo "Installing development dependencies..."
+	$(VENV_PIP) install -r requirements-test.txt
+	@echo "Development dependencies installed"
+
+# Run all tests
+test: install-dev
+	@echo "Running tests..."
+	$(VENV_PYTEST) tests/ -v
+
+# Run tests with verbose output
+test-verbose: install-dev
+	@echo "Running tests with verbose output..."
+	$(VENV_PYTEST) tests/ -vv
+
+# Run tests with coverage
+test-coverage: install-dev
+	@echo "Running tests with coverage..."
+	$(VENV_PYTEST) --cov=asitop --cov-report=term-missing tests/
+
+# Generate HTML coverage report
+coverage-html: install-dev
+	@echo "Generating HTML coverage report..."
+	$(VENV_PYTEST) --cov=asitop --cov-report=html tests/
+	@echo "Coverage report generated at htmlcov/index.html"
+	@echo "Open with: open htmlcov/index.html (macOS) or xdg-open htmlcov/index.html (Linux)"
+
+# Generate terminal coverage report
+coverage-report: install-dev
+	@echo "Generating coverage report..."
+	$(VENV_PYTEST) --cov=asitop --cov-report=term --cov-report=html tests/
+	@echo ""
+	@echo "HTML report available at htmlcov/index.html"
+
+# Run tests on file changes (requires pytest-watch)
+test-watch: install-dev
+	@echo "Running tests in watch mode..."
+	@echo "Install pytest-watch if not available: $(VENV_PIP) install pytest-watch"
+	@$(VENV_BIN)/ptw tests/ -- -v || \
+		(echo "pytest-watch not installed. Installing..." && \
+		$(VENV_PIP) install pytest-watch && \
+		$(VENV_BIN)/ptw tests/ -- -v)
+
+# Run asitop with sudo
+run: install
+	@echo "Running asitop with sudo (password required)..."
+	@echo "Press Ctrl+C to stop"
+	@sudo $(VENV_PYTHON) -m asitop.asitop
+
+# Run asitop without sudo (will prompt when needed)
+run-nosudo: install
+	@echo "Running asitop (will prompt for sudo password)..."
+	@echo "Press Ctrl+C to stop"
+	@$(VENV_PYTHON) -m asitop.asitop
+
+# Run linters
+lint: install-dev
+	@echo "Running flake8..."
+	-$(VENV_BIN)/flake8 asitop --count --select=E9,F63,F7,F82 --show-source --statistics
+	-$(VENV_BIN)/flake8 asitop --count --max-line-length=79 --statistics
+	@echo ""
+	@echo "Running pylint..."
+	-$(VENV_BIN)/pylint asitop --max-line-length=79
+
+# Format code
+format: install-dev
+	@echo "Formatting code with autopep8..."
+	@$(VENV_PIP) install autopep8 2>/dev/null || true
+	-$(VENV_BIN)/autopep8 --in-place --aggressive --aggressive -r asitop/
+	@echo "Code formatted"
+
+# Run all quality checks
+check: install-dev
+	@echo "Running all quality checks..."
+	@echo ""
+	@echo "=== Running tests ==="
+	@$(MAKE) test-coverage
+	@echo ""
+	@echo "=== Running linters ==="
+	@$(MAKE) lint
+	@echo ""
+	@echo "Quality checks complete"
+
+# Clean all generated files
+clean: clean-pyc clean-test
+	@echo "Removing virtual environment..."
+	rm -rf $(VENV)
+	@echo "Removing build artifacts..."
+	rm -rf build/
+	rm -rf dist/
+	rm -rf *.egg-info
+	rm -rf .eggs/
+	@echo "Clean complete"
+
+# Clean Python cache files
+clean-pyc:
+	@echo "Removing Python cache files..."
+	find . -type f -name '*.py[co]' -delete
+	find . -type d -name '__pycache__' -delete
+	find . -type d -name '*.egg-info' -exec rm -rf {} + 2>/dev/null || true
+	@echo "Python cache cleaned"
+
+# Clean test and coverage files
+clean-test:
+	@echo "Removing test and coverage files..."
+	rm -rf .pytest_cache/
+	rm -rf htmlcov/
+	rm -rf .coverage
+	rm -rf coverage.xml
+	rm -rf /tmp/asitop_powermetrics*
+	@echo "Test files cleaned"
+
+# Build distribution packages
+dist: install-dev clean
+	@echo "Building distribution packages..."
+	$(VENV_PYTHON) setup.py sdist bdist_wheel
+	@echo "Distribution packages built in dist/"
+
+# Upload to TestPyPI
+upload-test: dist
+	@echo "Uploading to TestPyPI..."
+	@$(VENV_PIP) install twine 2>/dev/null || true
+	$(VENV_BIN)/twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+# Upload to PyPI
+upload: dist
+	@echo "Uploading to PyPI..."
+	@echo "WARNING: This will upload to the production PyPI!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		$(VENV_PIP) install twine 2>/dev/null || true; \
+		$(VENV_BIN)/twine upload dist/*; \
+	else \
+		echo "Upload cancelled"; \
+	fi

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(/Applications/Xcode.app/Contents/Developer/usr/bin/python3 -m pytest:*)",
+      "Bash(chmod:*)",
+      "Bash(shellcheck:*)",
+      "Bash(make help:*)"
+    ]
+  }
+}
