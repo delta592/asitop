@@ -476,6 +476,66 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         self.assertAlmostEqual(ane_util_percent, 62, delta=1)
 
 
+class TestGpuUsageCalculation(unittest.TestCase):
+    """Test GPU utilization calculation with fallbacks."""
+
+    def test_gpu_usage_prefers_active_metrics(self) -> None:
+        """Active GPU metrics should take precedence over power fallback."""
+        from asitop.asitop import calculate_gpu_usage
+
+        gpu_percent, freq = calculate_gpu_usage(
+            {"active": 40, "freq_MHz": 900},
+            gpu_power_watts=5.0,
+            gpu_max_power=30.0,
+            last_gpu_freq_mhz=None,
+        )
+
+        self.assertEqual(gpu_percent, 40)
+        self.assertEqual(freq, 900)
+
+    def test_gpu_usage_falls_back_to_power(self) -> None:
+        """Use power-derived utilization when active residency is zero."""
+        from asitop.asitop import calculate_gpu_usage
+
+        gpu_percent, freq = calculate_gpu_usage(
+            {"active": 0, "freq_MHz": 0},
+            gpu_power_watts=12.0,  # 40% of 30W
+            gpu_max_power=30.0,
+            last_gpu_freq_mhz=500,
+        )
+
+        self.assertEqual(gpu_percent, 40)
+        self.assertEqual(freq, 500)
+
+    def test_gpu_usage_clamps_to_hundred(self) -> None:
+        """Clamp power-derived utilization to 100%."""
+        from asitop.asitop import calculate_gpu_usage
+
+        gpu_percent, freq = calculate_gpu_usage(
+            {"active": 0, "freq_MHz": 0},
+            gpu_power_watts=40.0,
+            gpu_max_power=30.0,
+            last_gpu_freq_mhz=None,
+        )
+
+        self.assertEqual(gpu_percent, 100)
+        self.assertIsNone(freq)
+
+    def test_gpu_usage_handles_zero_max_power(self) -> None:
+        """Gracefully handle missing GPU max power specs."""
+        from asitop.asitop import calculate_gpu_usage
+
+        gpu_percent, freq = calculate_gpu_usage(
+            {"active": 0, "freq_MHz": 0},
+            gpu_power_watts=10.0,
+            gpu_max_power=0.0,
+            last_gpu_freq_mhz=450,
+        )
+
+        self.assertEqual(gpu_percent, 0)
+        self.assertEqual(freq, 450)
+
+
 class TestTimestampHandling(unittest.TestCase):
     """Test cases for timestamp handling and update detection."""
 

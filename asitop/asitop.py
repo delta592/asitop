@@ -2,6 +2,7 @@ import argparse
 import subprocess
 import time
 from collections import deque
+from typing import Any
 
 from dashing import HChart, HGauge, HSplit, VGauge, VSplit
 
@@ -12,6 +13,27 @@ from .utils import (
     parse_powermetrics,
     run_powermetrics_process,
 )
+
+
+def calculate_gpu_usage(
+    gpu_metrics: dict[str, Any],
+    gpu_power_watts: float,
+    gpu_max_power: float,
+    last_gpu_freq_mhz: int | None,
+) -> tuple[int, int | None]:
+    """Derive GPU utilization percentage and frequency with power-based fallback."""
+    freq_mhz = int(gpu_metrics.get("freq_MHz", 0) or 0)
+    active_percent = int(gpu_metrics.get("active", 0) or 0)
+
+    power_based_percent = 0
+    if gpu_max_power > 0:
+        power_based_percent = int(gpu_power_watts / gpu_max_power * 100)
+
+    gpu_percent = active_percent if active_percent > 0 else power_based_percent
+    gpu_percent = max(0, min(gpu_percent, 100))
+    display_freq_mhz = freq_mhz or last_gpu_freq_mhz
+
+    return gpu_percent, display_freq_mhz
 
 
 def main() -> subprocess.Popen:
@@ -175,6 +197,7 @@ def main() -> subprocess.Popen:
     cpu_peak_power = 0
     gpu_peak_power = 0
     package_peak_power = 0
+    last_gpu_freq_mhz: int | None = None
 
     print("\n[2/3] Starting powermetrics process\n")
 
@@ -211,7 +234,7 @@ def main() -> subprocess.Popen:
 
     # Track wall-clock time for consistent 2-second refresh
     display_interval = 2.0  # Fixed 2 second wall-clock refresh
-    next_display_time = time.time() + display_interval
+    next_display_time = time.monotonic() + display_interval
 
     try:
         while True:
@@ -271,11 +294,17 @@ def main() -> subprocess.Popen:
                                 f"P-Cluster{i}_active"
                             ]
 
-                    gpu_gauge.title = (
-                        f"GPU Usage: {gpu_metrics_dict['active']}% @ "
-                        f"{gpu_metrics_dict['freq_MHz']} MHz"
+                    gpu_power_w = cpu_metrics_dict["gpu_W"] / args.interval
+                    gpu_util_percent, gpu_freq_mhz = calculate_gpu_usage(
+                        gpu_metrics_dict, gpu_power_w, gpu_max_power, last_gpu_freq_mhz
                     )
-                    gpu_gauge.value = gpu_metrics_dict["active"]
+                    last_gpu_freq_mhz = (
+                        gpu_freq_mhz if gpu_freq_mhz is not None else last_gpu_freq_mhz
+                    )
+
+                    gpu_freq_display = gpu_freq_mhz if gpu_freq_mhz is not None else "N/A"
+                    gpu_gauge.title = f"GPU Usage: {gpu_util_percent}% @ {gpu_freq_display} MHz"
+                    gpu_gauge.value = gpu_util_percent
 
                     ane_util_percent = int(
                         cpu_metrics_dict["ane_W"] / args.interval / ane_max_power * 100
@@ -406,11 +435,11 @@ def main() -> subprocess.Popen:
                     )
                     gpu_power_chart.append(gpu_power_percent)
 
-                    # Only update display at fixed wall-clock intervals
-                    current_time = time.time()
-                    if current_time >= next_display_time:
-                        ui.display()
-                        next_display_time = current_time + display_interval
+            # Only update display at fixed wall-clock intervals regardless of data jitter
+            current_time = time.monotonic()
+            if current_time >= next_display_time:
+                ui.display()
+                next_display_time = current_time + display_interval
 
             # Sleep briefly to avoid busy-waiting
             time.sleep(0.1)
