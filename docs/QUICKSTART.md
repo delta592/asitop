@@ -35,26 +35,26 @@ This runs `uv sync --extra test`, which:
 ### 2. Run Tests
 
 ```bash
-# Run all 85 tests
+# Run all 99 tests
 make test
 ```
 
 Expected output:
 ```
 Running tests...
-========================= 85 passed in 0.18s =========================
+========================= 99 passed in 0.19s =========================
 
 ---------- coverage: platform darwin, python 3.14.2 -----------
 Name                Stmts   Miss Branch BrPart  Cover
 -----------------------------------------------------
-asitop/asitop.py      175     13     26      4    93%
-asitop/parsers.py      86      6     32      2    93%
+asitop/asitop.py      177     15     26      4    92%
+asitop/parsers.py      86      2     32      2    98%
 asitop/utils.py       112      6     22      0    95%
 -----------------------------------------------------
-TOTAL                 373     25     80      6    93%
+TOTAL                 375     23     80      6    94%
 ```
 
-Current coverage: **93%** total (asitop: 93%, parsers: 93%, utils: 95%)
+Current coverage: **94%** total (asitop: 92%, parsers: 98%, utils: 95%)
 
 ### 3. Run asitop
 
@@ -137,19 +137,20 @@ Most useful commands:
 
 ```
 asitop/
-├── asitop/              # Source code
-│   ├── asitop.py        # Main application
-│   ├── utils.py         # Utility functions
-│   └── parsers.py       # Parsing functions
-├── tests/               # Test suite (85 tests)
-│   ├── test_asitop.py   # Main app tests (35 tests)
-│   ├── test_utils.py    # Utils tests (30 tests)
-│   └── test_parsers.py  # Parser tests (20 tests)
-├── .venv/               # Virtual environment (auto-created by uv)
-├── pyproject.toml       # Project config (replaces setup.py)
-├── uv.lock              # Lock file (replaces requirements.txt)
-├── Makefile             # Build automation (uses uv)
-└── run_asitop.sh        # Script to run asitop
+├── asitop/                    # Source code
+│   ├── asitop.py              # Main application
+│   ├── utils.py               # Utility functions
+│   └── parsers.py             # Parsing functions
+├── tests/                     # Test suite (99 tests)
+│   ├── test_asitop.py         # Main app tests (35 tests)
+│   ├── test_utils.py          # Utils tests (30 tests)
+│   ├── test_parsers.py        # Parser tests (20 tests)
+│   └── test_type_contracts.py # Type contract tests (14 tests)
+├── .venv/                     # Virtual environment (auto-created by uv)
+├── pyproject.toml             # Project config (replaces setup.py)
+├── uv.lock                    # Lock file (replaces requirements.txt)
+├── Makefile                   # Build automation (uses uv)
+└── run_asitop.sh              # Script to run asitop
 ```
 
 ## Testing Guide

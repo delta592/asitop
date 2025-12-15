@@ -27,7 +27,11 @@
       "Bash(wc:*)",
       "Bash(sudo powermetrics:*)",
       "Bash(cat:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(make lint:*)",
+      "Bash(make format-check:*)",
+      "Bash(make type-check:*)"
     ]
   }
 }

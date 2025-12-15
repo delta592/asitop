@@ -204,7 +204,7 @@ poetry.toml
 .ruff_cache/
 
 # LSP config files
-pyrightconfig.json
+# pyrightconfig.json  # Committed for Python 3.12+ type support in Pylance
 
 ### Vim ###
 # Swap

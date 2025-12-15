@@ -244,11 +244,13 @@ def run_powermetrics_process(
     return subprocess.Popen(command, stdin=PIPE, stdout=PIPE)
 
 
-def get_ram_metrics_dict() -> dict[str, float | int | None]:
+def get_ram_metrics_dict() -> dict[str, float | int]:
     """Get RAM and swap memory metrics.
 
     Returns:
-        Dictionary with memory statistics in GB and percentages
+        Dictionary with memory statistics in GB and percentages.
+        GB values are floats, percentages are ints.
+        Note: swap_free_percent is 0 when no swap is configured.
     """
     ram_metrics = psutil.virtual_memory()
     swap_metrics = psutil.swap_memory()
@@ -263,7 +265,7 @@ def get_ram_metrics_dict() -> dict[str, float | int | None]:
     if swap_total_gb > 0:
         swap_free_percent = int(100 - (swap_free_gb / swap_total_gb * 100))
     else:
-        swap_free_percent = None
+        swap_free_percent = 0  # Changed from None to 0 for type consistency
 
     return {
         "total_GB": round(total_gb, 1),

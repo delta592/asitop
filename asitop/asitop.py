@@ -269,22 +269,22 @@ def main() -> subprocess.Popen[bytes]:
                         f"E-CPU Usage: {cpu_metrics_dict['E-Cluster_active']}% @ "
                         f"{cpu_metrics_dict['E-Cluster_freq_Mhz']} MHz"
                     )
-                    cpu1_gauge.value = cpu_metrics_dict["E-Cluster_active"]
+                    cpu1_gauge.value = int(cpu_metrics_dict["E-Cluster_active"])
 
                     cpu2_gauge.title = (
                         f"P-CPU Usage: {cpu_metrics_dict['P-Cluster_active']}% @ "
                         f"{cpu_metrics_dict['P-Cluster_freq_Mhz']} MHz"
                     )
-                    cpu2_gauge.value = cpu_metrics_dict["P-Cluster_active"]
+                    cpu2_gauge.value = int(cpu_metrics_dict["P-Cluster_active"])
 
                     if args.show_cores:
                         for core_count, i in enumerate(cpu_metrics_dict["e_core"]):
                             e_core_gauges[core_count % 4].title = (
                                 f"Core-{i + 1} {cpu_metrics_dict[f'E-Cluster{i}_active']}%"
                             )
-                            e_core_gauges[core_count % 4].value = cpu_metrics_dict[
-                                f"E-Cluster{i}_active"
-                            ]
+                            e_core_gauges[core_count % 4].value = int(
+                                cpu_metrics_dict[f"E-Cluster{i}_active"]
+                            )
                         for core_count, i in enumerate(cpu_metrics_dict["p_core"]):
                             core_gauges = (
                                 p_core_gauges
@@ -297,7 +297,7 @@ def main() -> subprocess.Popen[bytes]:
                             core_gauges[gauge_idx].title = (
                                 f"{prefix}{i + 1} {cpu_metrics_dict[core_key]}%"
                             )
-                            core_gauges[gauge_idx].value = cpu_metrics_dict[core_key]
+                            core_gauges[gauge_idx].value = int(cpu_metrics_dict[core_key])
 
                     gpu_power_w = cpu_metrics_dict["gpu_W"] / args.interval
                     gpu_util_percent, gpu_freq_mhz = calculate_gpu_usage(
@@ -333,7 +333,8 @@ def main() -> subprocess.Popen[bytes]:
                             f"{ram_metrics_dict['swap_used_GB']}/"
                             f"{ram_metrics_dict['swap_total_GB']}GB"
                         )
-                    ram_gauge.value = ram_metrics_dict["free_percent"]
+                    # Type assertion: free_percent is always int, not float
+                    ram_gauge.value = int(ram_metrics_dict["free_percent"])
 
                     package_power_w = cpu_metrics_dict["package_W"] / args.interval
                     package_peak_power = max(package_peak_power, package_power_w)

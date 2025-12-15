@@ -240,7 +240,7 @@ class TestGetRamMetricsDict(unittest.TestCase):
         Test RAM metrics when swap is disabled.
 
         Edge case: Ensures correct handling when swap_total is 0,
-        resulting in None for swap_free_percent.
+        resulting in 0 for swap_free_percent (changed from None for type consistency).
         """
         from asitop.utils import get_ram_metrics_dict
 
@@ -256,7 +256,7 @@ class TestGetRamMetricsDict(unittest.TestCase):
         result = get_ram_metrics_dict()
 
         assert result["swap_total_GB"] == 0.0
-        assert result["swap_free_percent"] is None
+        assert result["swap_free_percent"] == 0  # Changed from None to 0 for type consistency
 
     @patch("psutil.virtual_memory")
     @patch("psutil.swap_memory")

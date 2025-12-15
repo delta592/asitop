@@ -4,6 +4,8 @@ from typing import Any
 # Type alias for improved readability (Python 3.12+)
 type PowermetricsDict = dict[str, Any]
 type BandwidthMetrics = dict[str, float]
+# CPUMetrics uses Any because it contains heterogeneous types that would require
+# complex TypedDict to represent accurately. This is a pragmatic trade-off.
 type CPUMetrics = dict[str, Any]
 type GPUMetrics = dict[str, int]
 
