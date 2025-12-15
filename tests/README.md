@@ -9,6 +9,7 @@ The test suite provides comprehensive coverage of all core asitop modules:
 - **test_parsers.py**: Tests for powermetrics data parsing functions
 - **test_utils.py**: Tests for utility functions and system information gathering
 - **test_asitop.py**: Tests for main application logic and integration
+- **test_type_contracts.py**: Runtime type validation tests for library compatibility
 
 ## Running Tests
 
@@ -51,6 +52,7 @@ To run tests for a specific module:
 uv run pytest tests/test_parsers.py
 uv run pytest tests/test_utils.py
 uv run pytest tests/test_asitop.py
+uv run pytest tests/test_type_contracts.py
 
 # Or with make
 make test ARGS="tests/test_parsers.py"
@@ -171,6 +173,24 @@ Key test scenarios:
 - Thermal and power calculations
 - Data freshness detection
 
+### test_type_contracts.py
+
+Runtime type validation tests ensuring compatibility with external libraries (especially the dashing UI library):
+
+- **TestGaugeValueTypes**: Validates that all gauge values are int, not float (dashing.HGauge/VGauge requirement)
+- **TestNumericValueRanges**: Ensures numeric values are within expected ranges (percentages 0-100, positive frequencies)
+- **TestTypeConsistency**: Verifies types remain consistent across different code paths and edge cases
+- **TestReturnValueStructure**: Validates dictionary keys and types for API contracts
+
+Key test scenarios:
+- RAM gauge values with and without swap
+- CPU gauge values for active percentages and frequencies
+- GPU gauge values and utilization calculations
+- Edge cases: zero values, idle states, DVFM states
+- Return value structure validation for all metrics dictionaries
+
+These tests catch type mismatches that static type checkers like pyright detect but that could slip through traditional unit tests. They ensure runtime type safety for library integration.
+
 ## Test Coverage Goals
 
 The test suite aims for:
@@ -283,8 +303,8 @@ These tests are designed to run in CI/CD pipelines using uv. Recommended workflo
 2. Run `uv sync --extra test` to install dependencies
 3. Run tests with coverage
 4. Enforce minimum coverage thresholds
-5. Run linting (pylint, flake8)
-6. Run type checking (mypy)
+5. Run linting (ruff, black)
+6. Run type checking (pyright)
 
 Example CI commands:
 
@@ -298,7 +318,11 @@ uv sync --extra test
 # Run tests with coverage
 uv run pytest --cov=asitop --cov-report=xml --cov-fail-under=75
 
-# Or use make
+# Run type checking with pyright
+make type-check-pyright
+
+# Or use make for all checks
+make check
 make test-coverage
 ```
 
@@ -344,5 +368,6 @@ When contributing new features:
 - [pytest documentation](https://docs.pytest.org/)
 - [unittest.mock documentation](https://docs.python.org/3/library/unittest.mock.html)
 - [coverage.py documentation](https://coverage.readthedocs.io/)
+- [pyright documentation](https://microsoft.github.io/pyright/)
 - [PEP 257: Docstring Conventions](https://peps.python.org/pep-0257/)
 - [PEP 484: Type Hints](https://peps.python.org/pep-0484/)
