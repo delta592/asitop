@@ -31,7 +31,8 @@
       "Bash(.venv/bin/python:*)",
       "Bash(make lint:*)",
       "Bash(make format-check:*)",
-      "Bash(make type-check:*)"
+      "Bash(make type-check:*)",
+      "Bash(make type-check-pyright:*)"
     ]
   }
 }

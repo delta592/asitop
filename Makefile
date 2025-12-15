@@ -33,12 +33,13 @@ help:
 	@echo "  make run-nosudo     Run asitop without sudo (will prompt later)"
 	@echo ""
 	@echo "Code quality commands:"
-	@echo "  make lint           Run linter (Ruff)"
-	@echo "  make format         Format code with Black"
-	@echo "  make type-check     Run type checker (Mypy)"
-	@echo "  make check          Run all quality checks (lint, format-check, type-check)"
-	@echo "  make format-check   Check if code is formatted correctly"
-	@echo "  make fix            Auto-fix linting issues with Ruff"
+	@echo "  make lint              Run linter (Ruff)"
+	@echo "  make format            Format code with Black"
+	@echo "  make type-check        Run type checker (Mypy)"
+	@echo "  make type-check-pyright Run type checker (Pyright)"
+	@echo "  make check             Run all quality checks (lint, format-check, type-check)"
+	@echo "  make format-check      Check if code is formatted correctly"
+	@echo "  make fix               Auto-fix linting issues with Ruff"
 	@echo ""
 	@echo "CI/CD commands:"
 	@echo "  make ci-test        Run tests with coverage (for CI, skip install)"
@@ -148,6 +149,11 @@ type-check: install-dev
 	@echo "Running Mypy type checker..."
 	$(UV_RUN) mypy asitop/
 
+# Run Pyright type checker
+type-check-pyright: install-dev
+	@echo "Running Pyright type checker..."
+	$(UV_RUN) pyright asitop/
+
 # Run all quality checks
 check: install-dev
 	@echo "Running all quality checks..."
@@ -160,6 +166,9 @@ check: install-dev
 	@echo ""
 	@echo "=== Running Mypy type checker ==="
 	@$(MAKE) type-check
+	@echo ""
+	@echo "=== Running Pyright type checker ==="
+	@$(MAKE) type-check-pyright
 	@echo ""
 	@echo "=== Running tests with coverage ==="
 	@$(MAKE) test-coverage
@@ -236,6 +245,9 @@ ci-quality:
 	@echo ""
 	@echo "=== Running Mypy type checker ==="
 	$(UV_RUN) mypy asitop/
+	@echo ""
+	@echo "=== Running Pyright type checker ==="
+	$(UV_RUN) pyright asitop/
 	@echo ""
 	@echo "Quality checks complete"
 

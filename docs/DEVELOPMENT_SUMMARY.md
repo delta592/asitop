@@ -95,6 +95,13 @@ The project has undergone comprehensive modernization since commit f393344:
 - Module-specific overrides for third-party libraries (psutil, dashing)
 - All code refactored to pass strict mypy checks
 
+**Pyright Configuration (2025):**
+- Added to test dependencies in pyproject.toml
+- Configured via pyrightconfig.json for IDE and CI use
+- Integrated into Makefile targets (type-check-pyright, check, ci-quality)
+- Runs alongside mypy for comprehensive type coverage
+- Provides additional type safety that complements mypy
+
 **Black Configuration (latest):**
 - Modern best practices with explicit settings
 - Support for Python 3.10-3.14
@@ -104,6 +111,7 @@ The project has undergone comprehensive modernization since commit f393344:
 **Code Refactoring:**
 All source and test code has been refactored to:
 - Pass strict mypy type checking
+- Pass Pyright type checking (additional safety layer)
 - Comply with comprehensive Ruff linting rules
 - Follow consistent Black/Ruff formatting
 - Use modern Python patterns and best practices
@@ -148,7 +156,8 @@ The project now uses **uv** for fast, reliable dependency management:
 - `make format` - Format code with Black
 - `make format-check` - Check code formatting
 - `make type-check` - Run Mypy type checker
-- `make check` - Run all quality checks (lint, format, type, tests)
+- `make type-check-pyright` - Run Pyright type checker
+- `make check` - Run all quality checks (lint, format, mypy, pyright, tests)
 
 **Cleanup:**
 - `make clean` - Remove all generated files (.venv, build, dist)

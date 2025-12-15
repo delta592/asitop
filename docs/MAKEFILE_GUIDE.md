@@ -276,6 +276,17 @@ make type-check
 
 Runs Mypy to check type annotations and catch type errors.
 
+### Run Type Checker (Pyright)
+
+```bash
+make type-check-pyright
+```
+
+Runs Pyright to check type annotations. Pyright is an alternative type checker that:
+- Often catches different issues than mypy
+- Uses the same engine as VS Code's Pylance
+- Provides additional type safety coverage
+
 ### Run All Quality Checks
 
 ```bash
@@ -286,7 +297,8 @@ Runs complete quality check suite:
 1. Ruff linter
 2. Black format check
 3. Mypy type check
-4. All tests with coverage
+4. Pyright type check
+5. All tests with coverage
 
 **Use this before committing code!**
 
@@ -623,6 +635,9 @@ All done! ✨ 🍰 ✨
 
 === Running Mypy type checker ===
 Success: no issues found in 4 source files
+
+=== Running Pyright type checker ===
+0 errors, 0 warnings, 0 informations
 
 === Running tests with coverage ===
 ========================= 81 passed in 0.24s =========================

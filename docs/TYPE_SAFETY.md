@@ -91,22 +91,29 @@ This is impractical because:
 
 ## How to Improve Type Safety
 
-### Approach 1: Use Pyright/Pylance in CI (Recommended)
+### Approach 1: Use Pyright/Pylance in CI ✅ IMPLEMENTED
 
-Add Pyright to your GitHub Actions workflow:
+Pyright has been added to the project:
 
-```yaml
-# .github/workflows/tests.yml
-- name: Type check with Pyright
-  run: |
-    uv pip install pyright
-    uv run pyright asitop/
+```bash
+# Run Pyright type checker
+make type-check-pyright
+
+# Run all quality checks (includes both Mypy and Pyright)
+make check
 ```
 
+**Configuration:**
+- Added to `pyproject.toml` test dependencies
+- Configured via `pyrightconfig.json`
+- Integrated into Makefile targets
+- Runs in CI pipeline via `make ci-quality`
+
 **Benefits:**
-- Catches type issues that mypy misses
-- Pylance and Pyright use the same type checker
-- Better library stub support
+- ✅ Catches type issues that mypy misses
+- ✅ Pylance and Pyright use the same type checker
+- ✅ Better library stub support
+- ✅ Runs automatically in CI alongside mypy
 
 ### Approach 2: Enable Stricter Mypy Settings
 
@@ -224,10 +231,11 @@ For asitop, the best approach is a **combination**:
    - Documents expected types
    - **14 new tests added in `tests/test_type_contracts.py`**
 
-3. ✅ **Consider Pyright in CI** (optional)
-   - Additional safety net
+3. ✅ **Use Pyright in CI** ✅ IMPLEMENTED
+   - Additional safety net alongside mypy
    - Catches issues early
    - Low maintenance overhead
+   - **Integrated into `make check` and `make ci-quality`**
 
 4. ❌ **Don't replace `Any` with complex unions**
    - Too much maintenance burden
