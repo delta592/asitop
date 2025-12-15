@@ -1,7 +1,14 @@
 from typing import Any
 
 
-def parse_thermal_pressure(powermetrics_parse: dict[str, Any]) -> str:
+# Type alias for improved readability (Python 3.12+)
+type PowermetricsDict = dict[str, Any]
+type BandwidthMetrics = dict[str, float]
+type CPUMetrics = dict[str, Any]
+type GPUMetrics = dict[str, int]
+
+
+def parse_thermal_pressure(powermetrics_parse: PowermetricsDict) -> str:
     """Parse thermal pressure from powermetrics data.
 
     Args:
@@ -10,11 +17,10 @@ def parse_thermal_pressure(powermetrics_parse: dict[str, Any]) -> str:
     Returns:
         Thermal pressure status string
     """
-    thermal_pressure: str = powermetrics_parse["thermal_pressure"]
-    return thermal_pressure
+    return str(powermetrics_parse["thermal_pressure"])
 
 
-def parse_bandwidth_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, float]:
+def parse_bandwidth_metrics(powermetrics_parse: PowermetricsDict) -> BandwidthMetrics:
     """Parse memory bandwidth metrics from powermetrics data.
 
     Args:
@@ -24,7 +30,7 @@ def parse_bandwidth_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, flo
         Dictionary with bandwidth metrics in GB/s
     """
     bandwidth_metrics = powermetrics_parse["bandwidth_counters"]
-    bandwidth_metrics_dict: dict[str, float] = {}
+    bandwidth_metrics_dict: BandwidthMetrics = {}
     data_fields = [
         "PCPU0 DCS RD",
         "PCPU0 DCS WR",
@@ -141,7 +147,7 @@ def parse_bandwidth_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, flo
     return bandwidth_metrics_dict
 
 
-def parse_cpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, Any]:
+def parse_cpu_metrics(powermetrics_parse: PowermetricsDict) -> CPUMetrics:
     """Parse CPU cluster metrics from powermetrics data.
 
     Args:
@@ -153,7 +159,7 @@ def parse_cpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, Any]:
     e_core: list[int] = []
     p_core: list[int] = []
     cpu_metrics = powermetrics_parse["processor"]
-    cpu_metric_dict: dict[str, Any] = {}
+    cpu_metric_dict: CPUMetrics = {}
 
     # cpu_clusters
     cpu_clusters = cpu_metrics["clusters"]
@@ -231,7 +237,7 @@ def parse_cpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, Any]:
     return cpu_metric_dict
 
 
-def parse_gpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, int]:
+def parse_gpu_metrics(powermetrics_parse: PowermetricsDict) -> GPUMetrics:
     """Parse GPU metrics from powermetrics data.
 
     Args:
@@ -250,15 +256,17 @@ def parse_gpu_metrics(powermetrics_parse: dict[str, Any]) -> dict[str, int]:
 
     # Newer powermetrics builds expose GPU frequency in MHz instead of Hz.
     # Accept either by detecting the magnitude and normalizing to MHz.
-    if freq_value > 1e5:
-        freq_mhz = int(freq_value / 1e6)
-    else:
-        freq_mhz = int(freq_value)
+    # Using match-case for cleaner logic (Python 3.10+)
+    match freq_value:
+        case freq if freq > 1e5:
+            freq_mhz = int(freq / 1e6)
+        case freq:
+            freq_mhz = int(freq)
 
     # If frequency is still zero but DVFM residency is present, derive
     # an average from the residency table to avoid showing "N/A".
-    if freq_mhz == 0 and "dvfm_states" in gpu_metrics:
-        dvfm_states = gpu_metrics["dvfm_states"]
+    if freq_mhz == 0 and (dvfm_states := gpu_metrics.get("dvfm_states")):
+        # Using walrus operator for cleaner code (Python 3.8+, optimized in 3.12+)
         weighted_freq = sum(
             state.get("freq", 0) * state.get("used_ratio", 0) for state in dvfm_states
         )

@@ -25,7 +25,9 @@
       "Bash(uv pip:*)",
       "Bash(git -C /Users/dax/scm/github.com/delta592/asitop log --oneline -20)",
       "Bash(wc:*)",
-      "Bash(sudo powermetrics:*)"
+      "Bash(sudo powermetrics:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)"
     ]
   }
 }

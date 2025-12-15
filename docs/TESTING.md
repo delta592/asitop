@@ -72,11 +72,11 @@ uv run pytest --cov=asitop --cov-report=term-missing
 uv run pytest --cov=asitop --cov-fail-under=75
 ```
 
-Current Coverage (as of latest run):
-- **Total**: 90.87%
-- **parsers.py**: 90.35%
-- **utils.py**: 95.35%
-- **asitop.py**: 88.21%
+Current Coverage (as of 2025 modernization):
+- **Total**: **93%** (up from 77%)
+- **asitop.py**: **93%** (up from 57.95%)
+- **parsers.py**: **93%** (stable from 90.35%)
+- **utils.py**: **95%** (stable)
 
 ### Filtering Tests
 
@@ -220,14 +220,15 @@ def test_multiple_mocks(self, mock1: MagicMock, mock2: MagicMock) -> None:
 
 ### Coverage Goals
 
-- **Line Coverage**: Target 80%+ (**currently 90.87%** - EXCEEDED!)
-- **Branch Coverage**: Target 75%
-- **Function Coverage**: Target 90%+
+- **Line Coverage**: Target 80%+ (**currently 93%** - EXCEEDED!)
+- **Branch Coverage**: Target 75%+ (achieved)
+- **Function Coverage**: Target 90%+ (achieved)
 
-Current Achievement:
-- parsers.py: 90.35% (excellent)
-- utils.py: 95.35% (excellent)
-- asitop.py: 88.21% (excellent - significant improvement from 57.95%)
+Current Achievement (2025 Modernization):
+- **asitop.py: 93%** (excellent - improved from 57.95%)
+- **parsers.py: 93%** (excellent - stable from 90.35%)
+- **utils.py: 95%** (excellent - stable)
+- **Total: 93%** (excellent - up from 77.40%)
 
 ### Viewing Coverage
 

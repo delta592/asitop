@@ -16,7 +16,7 @@ uv pip install asitop
 
 ## What is `asitop`
 
-A Python-based `nvtop`-inspired command line tool for Apple Silicon (aka M1) Macs.
+A Python-based `nvtop`-inspired command line tool for Apple Silicon Macs (M1, M2, M3, M4 and their Pro/Max/Ultra variants).
 
 * Utilization info:
   * CPU (E-cluster and P-cluster), GPU
@@ -32,7 +32,7 @@ A Python-based `nvtop`-inspired command line tool for Apple Silicon (aka M1) Mac
 
 `asitop` uses the built-in [`powermetrics`](https://www.unix.com/man-page/osx/1/powermetrics/) utility on macOS, which allows access to a variety of hardware performance counters. Note that it requires `sudo` to run due to `powermetrics` needing root access to run. `asitop` is lightweight and has minimal performance impact.
 
-**`asitop` only works on Apple Silicon Macs on macOS Monterey!**
+**`asitop` works on Apple Silicon Macs running macOS Monterey or later (requires Python 3.12+)**
 
 ## Installation and Usage
 

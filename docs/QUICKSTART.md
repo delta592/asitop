@@ -4,8 +4,8 @@ Get up and running with asitop development in 3 simple steps!
 
 ## Prerequisites
 
-- macOS with Apple Silicon (M1, M1 Pro, M1 Max, M1 Ultra, or M2)
-- **Python 3.10 or higher** (required)
+- macOS with Apple Silicon (M1, M2, M3, M4 and their Pro/Max/Ultra variants)
+- **Python 3.12 or higher** (required - modernized for 2025)
 - uv (fast Python package manager)
 - make (comes with Xcode Command Line Tools)
 
@@ -35,26 +35,26 @@ This runs `uv sync --extra test`, which:
 ### 2. Run Tests
 
 ```bash
-# Run all 81 tests
+# Run all 85 tests
 make test
 ```
 
 Expected output:
 ```
 Running tests...
-========================= 81 passed in 0.24s =========================
+========================= 85 passed in 0.18s =========================
 
 ---------- coverage: platform darwin, python 3.14.2 -----------
 Name                Stmts   Miss Branch BrPart  Cover
 -----------------------------------------------------
-asitop/asitop.py      169     64     26      4  57.95%
-asitop/parsers.py      82      7     32      2  90.35%
-asitop/utils.py       107      6     22      0  95.35%
+asitop/asitop.py      175     13     26      4    93%
+asitop/parsers.py      86      6     32      2    93%
+asitop/utils.py       112      6     22      0    95%
 -----------------------------------------------------
-TOTAL                 358     77     80      6  77.40%
+TOTAL                 373     25     80      6    93%
 ```
 
-Current coverage: 77.40% total (parsers: 90.35%, utils: 95.35%, asitop: 57.95%)
+Current coverage: **93%** total (asitop: 93%, parsers: 93%, utils: 95%)
 
 ### 3. Run asitop
 
@@ -141,10 +141,10 @@ asitop/
 │   ├── asitop.py        # Main application
 │   ├── utils.py         # Utility functions
 │   └── parsers.py       # Parsing functions
-├── tests/               # Test suite (81 tests)
-│   ├── test_asitop.py   # Main app tests (31 tests)
-│   ├── test_utils.py    # Utils tests (33 tests)
-│   └── test_parsers.py  # Parser tests (17 tests)
+├── tests/               # Test suite (85 tests)
+│   ├── test_asitop.py   # Main app tests (35 tests)
+│   ├── test_utils.py    # Utils tests (30 tests)
+│   └── test_parsers.py  # Parser tests (20 tests)
 ├── .venv/               # Virtual environment (auto-created by uv)
 ├── pyproject.toml       # Project config (replaces setup.py)
 ├── uv.lock              # Lock file (replaces requirements.txt)

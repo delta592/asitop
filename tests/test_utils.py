@@ -141,7 +141,7 @@ class TestParsePowermetrics(unittest.TestCase):
         """
         from asitop.utils import parse_powermetrics
 
-        result = parse_powermetrics(path="/nonexistent/path", timecode="test")
+        result = parse_powermetrics(timecode="nonexistent_test")
         assert not result
 
     def test_parse_powermetrics_multiple_entries(self) -> None:

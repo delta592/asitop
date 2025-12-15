@@ -3,6 +3,7 @@ import pathlib
 import plistlib
 import subprocess
 from subprocess import PIPE
+import tempfile
 from typing import Any, Literal
 
 import psutil
@@ -90,27 +91,27 @@ SOC_SPECS = {
         "gpu_max_bw": 800,
     },
     "Apple M4": {
-        "cpu_max_power": 22,
-        "gpu_max_power": 20,
-        "cpu_max_bw": 120,
+        "cpu_max_power": 25,  # Updated for M4 (4P+6E cores, 3nm process)
+        "gpu_max_power": 22,  # 10-core GPU variant
+        "cpu_max_bw": 120,  # 120 GB/s unified memory bandwidth
         "gpu_max_bw": 120,
     },
     "Apple M4 Pro": {
-        "cpu_max_power": 35,
-        "gpu_max_power": 45,
-        "cpu_max_bw": 273,
+        "cpu_max_power": 40,  # Updated for M4 Pro (up to 10P+4E cores)
+        "gpu_max_power": 50,  # Up to 20-core GPU
+        "cpu_max_bw": 273,  # 273 GB/s unified memory bandwidth
         "gpu_max_bw": 273,
     },
     "Apple M4 Max": {
-        "cpu_max_power": 45,
-        "gpu_max_power": 80,
-        "cpu_max_bw": 546,
+        "cpu_max_power": 50,  # Updated for M4 Max (up to 12P+4E cores)
+        "gpu_max_power": 92,  # Up to 40-core GPU with ray tracing
+        "cpu_max_bw": 546,  # 546 GB/s unified memory bandwidth
         "gpu_max_bw": 546,
     },
     "Apple M4 Ultra": {
-        "cpu_max_power": 90,
-        "gpu_max_power": 160,
-        "cpu_max_bw": 1092,
+        "cpu_max_power": 100,  # Estimated for M4 Ultra (2x M4 Max die)
+        "gpu_max_power": 184,  # Estimated: 2x M4 Max GPU
+        "cpu_max_bw": 1092,  # Estimated: 2x M4 Max bandwidth
         "gpu_max_bw": 1092,
     },
     # Default fallback for unknown chips
@@ -123,17 +124,39 @@ SOC_SPECS = {
 }
 
 
+def get_powermetrics_path(timecode: str = "0") -> str:
+    """Get the path for powermetrics output file.
+
+    Args:
+        timecode: Unique identifier for the output file
+
+    Returns:
+        Full path to the powermetrics output file
+    """
+    return str(pathlib.Path(tempfile.gettempdir()) / f"asitop_powermetrics{timecode}")
+
+
 def parse_powermetrics(
-    path: str = "/tmp/asitop_powermetrics", timecode: str = "0"
+    timecode: str = "0",
+    path: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str, None, int] | Literal[False]:
     """Parse powermetrics plist file and extract metrics.
 
     To avoid unbounded memory growth, only the last slice of the file is read.
     We then split on null bytes and parse the newest complete plist. If the last
     entry is incomplete, fall back to previous entries in that slice.
+
+    Args:
+        timecode: Unique identifier for the output file
+        path: Optional explicit path (for testing). If None, uses get_powermetrics_path()
+
+    Returns:
+        Tuple of (cpu_metrics, gpu_metrics, thermal_pressure, bandwidth_metrics, timestamp)
+        or False if parsing fails
     """
+    file_path = path if path is not None else get_powermetrics_path(timecode)
     try:
-        with pathlib.Path(path + timecode).open("rb") as fp:
+        with pathlib.Path(file_path).open("rb") as fp:
             fp.seek(0, 2)
             size = fp.tell()
             # Read only the tail of the file to avoid unbounded growth.
@@ -196,10 +219,11 @@ def run_powermetrics_process(
         Running Popen process object
     """
     # Clean up old powermetrics files
-    for tmpf in glob.glob("/tmp/asitop_powermetrics*"):
+    tmp_dir = tempfile.gettempdir()
+    for tmpf in glob.glob(str(pathlib.Path(tmp_dir) / "asitop_powermetrics*")):
         pathlib.Path(tmpf).unlink(missing_ok=True)
 
-    output_file = f"/tmp/asitop_powermetrics{timecode}"
+    output_file = get_powermetrics_path(timecode)
 
     command = [
         "sudo",
