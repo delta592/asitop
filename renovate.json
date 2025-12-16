@@ -179,10 +179,7 @@
     },
     "lockFileMaintenance": {
         "enabled": true,
-        "automerge": false,
-        "schedule": [
-            "before 10am on monday"
-        ]
+        "automerge": false
     },
     "customManagers": [
         {
