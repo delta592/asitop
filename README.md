@@ -76,6 +76,8 @@ sudo asitop
 # it will prompt password on start
 asitop
 
+# to quit: press 'q' or Ctrl+C
+
 # advanced options
 asitop [-h] [--interval INTERVAL] [--color COLOR] [--avg AVG]
 optional arguments:

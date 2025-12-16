@@ -1,8 +1,13 @@
 import argparse
 from collections import deque
+import contextlib
 import math
+import select
 import subprocess
+import sys
+import termios
 import time
+import tty
 from typing import Any
 
 from dashing import HChart, HGauge, HSplit, VGauge, VSplit
@@ -30,6 +35,19 @@ MAX_P_CORES_SINGLE_ROW = 8
 MIN_P_CORES_ABBREVIATED = 6
 
 
+def check_for_quit_key() -> bool:
+    """Check if 'q' key was pressed without blocking.
+
+    Returns:
+        True if 'q' was pressed, False otherwise
+    """
+    if select.select([sys.stdin], [], [], 0)[0]:
+        char = sys.stdin.read(1)
+        if char.lower() == "q":
+            return True
+    return False
+
+
 def calculate_gpu_usage(
     gpu_metrics: dict[str, Any],
     gpu_power_watts: float,
@@ -51,11 +69,11 @@ def calculate_gpu_usage(
     return gpu_percent, display_freq_mhz
 
 
-def main() -> subprocess.Popen[bytes]:
+def main() -> tuple[subprocess.Popen[bytes], str]:
     """Main application function for asitop performance monitor.
 
     Returns:
-        Running powermetrics subprocess
+        Tuple of (Running powermetrics subprocess, timecode for temp file)
     """
     parser = argparse.ArgumentParser(
         description="asitop: Performance monitoring CLI tool for Apple Silicon"
@@ -234,8 +252,19 @@ def main() -> subprocess.Popen[bytes]:
     # If user hasn't set max_count, default to restarting every DEFAULT_RESTART_INTERVAL iterations
     restart_interval = args.max_count if args.max_count > 0 else DEFAULT_RESTART_INTERVAL
 
+    # Set terminal to raw mode for non-blocking keyboard input (if stdin is a TTY)
+    old_settings = None
+    keyboard_enabled = sys.stdin.isatty()
+    if keyboard_enabled:
+        old_settings = termios.tcgetattr(sys.stdin)
     try:
+        if keyboard_enabled:
+            tty.setcbreak(sys.stdin.fileno())
         while True:
+            # Check if 'q' key was pressed (only when keyboard is enabled)
+            if keyboard_enabled and check_for_quit_key():
+                print("\nExiting asitop...")
+                break
             if count >= restart_interval:
                 count = 0
                 powermetrics_process.terminate()
@@ -388,17 +417,56 @@ def main() -> subprocess.Popen[bytes]:
 
     except KeyboardInterrupt:
         print("Stopping...")
+    finally:
+        # Restore terminal settings (if they were changed)
+        if old_settings is not None:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
         print("\033[?25h")
 
-    return powermetrics_process
+    return powermetrics_process, timecode
 
 
 if __name__ == "__main__":
-    powermetrics_process = main()
+    powermetrics_process, timecode = main()
+    # Clean up the powermetrics process
+    exit_code = 0
     try:
-        powermetrics_process.terminate()
-        print("Successfully terminated powermetrics process")
-    except Exception as e:
-        print(e)
-        powermetrics_process.terminate()
-        print("Successfully terminated powermetrics process")
+        if powermetrics_process.poll() is None:  # Process is still running
+            # Terminate the process
+            powermetrics_process.terminate()
+
+            try:
+                powermetrics_process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                # Process didn't terminate gracefully, force kill it
+                powermetrics_process.kill()
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    powermetrics_process.wait(timeout=2)
+
+        # Additional cleanup: kill any orphaned powermetrics processes
+        # This handles the sudo process chain that may not terminate with the parent
+        # Use sudo pkill to ensure we have permissions to kill powermetrics
+        with contextlib.suppress(Exception):
+            subprocess.run(
+                ["sudo", "pkill", "-f", "^powermetrics.*asitop_powermetrics"],
+                timeout=2,
+                check=False,
+                capture_output=True,
+            )
+
+        # Clean up the temporary powermetrics output file
+        import pathlib
+
+        from .utils import get_powermetrics_path
+
+        temp_file = pathlib.Path(get_powermetrics_path(timecode))
+        with contextlib.suppress(FileNotFoundError, PermissionError):
+            temp_file.unlink()
+    except Exception:
+        # Final fallback: try to kill forcefully and ignore errors
+        with contextlib.suppress(Exception):
+            powermetrics_process.kill()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                powermetrics_process.wait(timeout=1)
+
+    sys.exit(exit_code)

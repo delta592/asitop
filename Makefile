@@ -113,14 +113,14 @@ test-watch: install-dev
 # Run asitop with sudo
 run: install
 	@echo "Running asitop with sudo (password required)..."
-	@echo "Press Ctrl+C to stop"
-	@sudo $(UV_RUN) asitop
+	@echo "Press Ctrl+C or 'q' to stop"
+	@sudo $(UV_RUN) python -m asitop
 
 # Run asitop without sudo (will prompt when needed)
 run-nosudo: install
 	@echo "Running asitop (will prompt for sudo password)..."
-	@echo "Press Ctrl+C to stop"
-	@$(UV_RUN) asitop
+	@echo "Press Ctrl+C or 'q' to stop"
+	@$(UV_RUN) python -m asitop
 
 # Run linter (Ruff)
 lint: install-dev

@@ -181,13 +181,13 @@ make run
 - Installs dependencies if needed
 - Runs asitop with sudo
 - Prompts for password once at the start
-- Press Ctrl+C to stop
+- Press 'q' or Ctrl+C to stop
 
 Example:
 ```bash
 $ make run
 Running asitop with sudo (password required)...
-Press Ctrl+C to stop
+Press Ctrl+C or 'q' to stop
 Password: [enter your password]
 
 ASITOP - Performance monitoring CLI tool for Apple Silicon
@@ -202,6 +202,7 @@ make run-nosudo
 
 - Runs asitop without sudo initially
 - Will prompt for password when needed
+- Press 'q' or Ctrl+C to stop
 - Less convenient but works the same
 
 ### Using the Shell Script

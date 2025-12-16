@@ -61,6 +61,8 @@ Current coverage: **94%** total (asitop: 92%, parsers: 98%, utils: 95%)
 ```bash
 # Run asitop (requires sudo password)
 make run
+
+# Press 'q' or Ctrl+C to quit
 ```
 
 That's it! You're ready to develop.
