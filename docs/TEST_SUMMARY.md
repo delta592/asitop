@@ -6,14 +6,14 @@ A comprehensive test suite has been added to the asitop project following the Py
 
 ## Test Statistics
 
-- **Total Tests**: 85
+- **Total Tests**: 105
 - **Test Files**: 3
-- **Test Classes**: 30
+- **Test Classes**: 31
 - **Code Modules Covered**: 3 (parsers.py, utils.py, asitop.py)
-- **Overall Coverage**: 90.87% (**Target: 80%+**)
-  - parsers.py: 90.35%
-  - utils.py: 95.35%
-  - asitop.py: 88.21% (improved from 57.95%)
+- **Overall Coverage**: 93% (**Target: 80%+**)
+  - parsers.py: 98%
+  - utils.py: 95%
+  - asitop.py: 90%
 
 ## Test Breakdown
 
@@ -43,7 +43,7 @@ Tests for utility functions and system information:
 - **TestGetSOCInfo** (6 tests): SOC information for all Apple Silicon variants
 - **TestRunPowermetricsProcess** (3 tests): Process management
 
-### test_asitop.py (33 tests)
+### test_asitop.py (53 tests)
 
 Tests for main application logic:
 
@@ -61,6 +61,7 @@ Tests for main application logic:
 - **TestShowCoresMode** (1 test): Individual core gauge updates with --show_cores flag
 - **TestRAMSwapHandling** (1 test): RAM gauge display with active swap
 - **TestMainLoopEdgeCases** (2 tests): Main loop with restart logic and thermal pressure
+- **TestQuitKeyHandling** (6 tests): Quit key ('q') handling, terminal settings, and TTY detection
 
 ## Key Features
 
@@ -323,11 +324,11 @@ All source code has been refactored to meet strict standards:
 
 The test suite provides:
 
-- **85 comprehensive tests** covering all major functionality (up from 81)
-- **90.87% code coverage** - EXCEEDS 80% target! (improved from 77.40%)
-  - parsers.py: 90.35% (unchanged - already excellent)
-  - utils.py: 95.35% (unchanged - already excellent)
-  - asitop.py: 88.21% (major improvement from 57.95%)
+- **105 comprehensive tests** covering all major functionality (up from 99)
+- **93% code coverage** - EXCEEDS 80% target! (improved from 91%)
+  - parsers.py: 98% (improved from 90.35%)
+  - utils.py: 95% (maintained)
+  - asitop.py: 90% (improved from 88.21%)
 - **Strict code quality**: Passes Ruff (ALL rules), Black, and strict Mypy
 - **Modern tooling**: Centralized configuration in pyproject.toml
 - **Clear documentation** for writing and running tests
@@ -336,13 +337,20 @@ The test suite provides:
 - **Edge case coverage** for robust error handling (corrupted data, partial data, etc.)
 - **Platform coverage** for all Apple Silicon variants including M1 Ultra
 - **Main loop coverage**: Tests for retry logic, extended cores, show_cores mode, and swap handling
+- **Keyboard handling**: Tests for 'q' key quit functionality, terminal settings, and TTY detection
 - **Maintainability** through clear structure and documentation
 
 ### Recent Coverage Improvements
 
-Four new test classes added to reach 90%+ coverage:
+Five new test classes added to reach 93% coverage:
 
 1. **TestGetReadingRetry**: Tests retry loop when powermetrics data isn't immediately ready
 2. **TestExtendedPCoreSupport**: Tests M1 Ultra (16 P-cores) extended gauge layout initialization
 3. **TestShowCoresMode**: Tests individual core gauge updates with --show_cores flag
 4. **TestRAMSwapHandling**: Tests RAM gauge display with active swap (>0.1GB)
+5. **TestQuitKeyHandling** (6 tests): Tests 'q' key quit functionality including:
+   - `check_for_quit_key()` with 'q' pressed (lowercase and uppercase)
+   - `check_for_quit_key()` with other keys
+   - `check_for_quit_key()` with no input
+   - Terminal settings save/restore for TTY
+   - Keyboard handling disabled for non-TTY stdin

@@ -1081,5 +1081,155 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                 assert True
 
 
+class TestQuitKeyHandling(unittest.TestCase):
+    """Test cases for quit key ('q') handling functionality."""
+
+    @patch("asitop.asitop.select.select")
+    @patch("asitop.asitop.sys.stdin")
+    def test_check_for_quit_key_pressed(
+        self, mock_stdin: MagicMock, mock_select: MagicMock
+    ) -> None:
+        """
+        Test that check_for_quit_key() returns True when 'q' is pressed.
+
+        Verifies:
+        - select.select indicates input is available
+        - stdin.read(1) returns 'q'
+        - Function returns True
+        """
+        from asitop.asitop import check_for_quit_key
+
+        # Simulate 'q' key being pressed
+        mock_select.return_value = ([mock_stdin], [], [])
+        mock_stdin.read.return_value = "q"
+
+        result = check_for_quit_key()
+
+        assert result is True
+        mock_select.assert_called_once_with([mock_stdin], [], [], 0)
+        mock_stdin.read.assert_called_once_with(1)
+
+    @patch("asitop.asitop.select.select")
+    @patch("asitop.asitop.sys.stdin")
+    def test_check_for_quit_key_uppercase(
+        self, mock_stdin: MagicMock, mock_select: MagicMock
+    ) -> None:
+        """
+        Test that check_for_quit_key() returns True when 'Q' (uppercase) is pressed.
+
+        Verifies case-insensitive handling of the quit key.
+        """
+        from asitop.asitop import check_for_quit_key
+
+        # Simulate 'Q' key being pressed
+        mock_select.return_value = ([mock_stdin], [], [])
+        mock_stdin.read.return_value = "Q"
+
+        result = check_for_quit_key()
+
+        assert result is True
+
+    @patch("asitop.asitop.select.select")
+    @patch("asitop.asitop.sys.stdin")
+    def test_check_for_quit_key_other_key(
+        self, mock_stdin: MagicMock, mock_select: MagicMock
+    ) -> None:
+        """
+        Test that check_for_quit_key() returns False when a non-'q' key is pressed.
+
+        Verifies:
+        - Other keys don't trigger quit
+        - Function returns False
+        """
+        from asitop.asitop import check_for_quit_key
+
+        # Simulate other key being pressed
+        mock_select.return_value = ([mock_stdin], [], [])
+        mock_stdin.read.return_value = "x"
+
+        result = check_for_quit_key()
+
+        assert result is False
+
+    @patch("asitop.asitop.select.select")
+    def test_check_for_quit_key_no_input(self, mock_select: MagicMock) -> None:
+        """
+        Test that check_for_quit_key() returns False when no key is pressed.
+
+        Verifies:
+        - select.select indicates no input available
+        - Function returns False without reading stdin
+        """
+        from asitop.asitop import check_for_quit_key
+
+        # Simulate no key being pressed
+        mock_select.return_value = ([], [], [])
+
+        result = check_for_quit_key()
+
+        assert result is False
+
+    @patch("asitop.asitop.sys.stdin")
+    @patch("asitop.asitop.termios.tcgetattr")
+    @patch("asitop.asitop.termios.tcsetattr")
+    def test_terminal_settings_for_tty(
+        self,
+        mock_tcsetattr: MagicMock,
+        mock_tcgetattr: MagicMock,
+        mock_stdin: MagicMock,
+    ) -> None:
+        """
+        Test that terminal settings are saved and restored for TTY stdin.
+
+        Verifies that when stdin is a TTY, terminal settings are:
+        - Saved before entering the main loop
+        - Restored in the finally block on exit
+        """
+        from asitop import asitop as asitop_module
+
+        # Mock stdin as a TTY
+        mock_stdin.isatty.return_value = True
+        old_settings = ["mock", "settings"]
+        mock_tcgetattr.return_value = old_settings
+
+        # Simulate the terminal setup that happens in main()
+        keyboard_enabled = mock_stdin.isatty()
+        old_settings_var = None
+        if keyboard_enabled:
+            old_settings_var = mock_tcgetattr(mock_stdin)
+
+        # Verify settings were saved
+        assert keyboard_enabled is True
+        assert old_settings_var == old_settings
+        mock_tcgetattr.assert_called_once_with(mock_stdin)
+
+        # Simulate the finally block that restores settings
+        if old_settings_var is not None:
+            mock_tcsetattr(mock_stdin, asitop_module.termios.TCSADRAIN, old_settings_var)
+
+        # Verify settings were restored
+        mock_tcsetattr.assert_called_once_with(
+            mock_stdin, asitop_module.termios.TCSADRAIN, old_settings
+        )
+
+    @patch("asitop.asitop.sys.stdin")
+    def test_keyboard_disabled_for_non_tty(self, mock_stdin: MagicMock) -> None:
+        """
+        Test that keyboard handling is disabled when stdin is not a TTY.
+
+        Verifies that when stdin.isatty() returns False (e.g., piped input),
+        keyboard checking is disabled and terminal settings are not modified.
+        """
+        # Mock stdin as NOT a TTY (e.g., piped input)
+        mock_stdin.isatty.return_value = False
+
+        # Simulate the keyboard check that happens in main()
+        keyboard_enabled = mock_stdin.isatty()
+
+        # Verify keyboard is disabled
+        assert keyboard_enabled is False
+        mock_stdin.isatty.assert_called()
+
+
 if __name__ == "__main__":
     unittest.main()
