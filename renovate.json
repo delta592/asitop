@@ -20,10 +20,6 @@
         ":ignoreModulesAndTests"
     ],
     "timezone": "America/Chicago",
-    "schedule": [
-        "after 9am every weekday",
-        "before 4pm every weekday"
-    ],
     "dependencyDashboard": true,
     "forkProcessing": "enabled",
     "automerge": false,
