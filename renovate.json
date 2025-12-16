@@ -20,7 +20,6 @@
         ":ignoreModulesAndTests"
     ],
     "timezone": "America/Chicago",
-    "allowWorkflowFileEdits": true,
     "dependencyDashboard": true,
     "forkProcessing": "enabled",
     "automerge": false,
