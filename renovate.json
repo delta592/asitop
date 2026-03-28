@@ -17,7 +17,8 @@
         "helpers:pinGitHubActionDigestsToSemver",
         ":pinDevDependencies",
         ":semanticPrefixFixDepsChoreOthers",
-        ":ignoreModulesAndTests"
+        ":ignoreModulesAndTests",
+        ":pinVersions"
     ],
     "timezone": "America/Chicago",
     "dependencyDashboard": true,
