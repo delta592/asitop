@@ -20,7 +20,6 @@ from .utils import (
     run_powermetrics_process,
 )
 
-
 # Constants for power limits and thresholds
 ANE_MAX_POWER_WATTS = 8.0
 THERMAL_PRESSURE_NOMINAL = "Nominal"

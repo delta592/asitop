@@ -2,7 +2,6 @@
 
 from .asitop import main
 
-
 if __name__ == "__main__":
     powermetrics_process, timecode = main()
     # Cleanup is handled by asitop.py when run as a script

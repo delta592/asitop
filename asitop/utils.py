@@ -14,7 +14,6 @@ from .parsers import (
     parse_thermal_pressure,
 )
 
-
 # SOC specifications database for Apple Silicon chips
 # Power values in Watts, Bandwidth in GB/s
 SOC_SPECS = {

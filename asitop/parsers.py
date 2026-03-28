@@ -1,6 +1,5 @@
 from typing import Any
 
-
 # Type alias for improved readability (Python 3.12+)
 type PowermetricsDict = dict[str, Any]
 type BandwidthMetrics = dict[str, float]

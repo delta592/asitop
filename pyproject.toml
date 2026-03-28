@@ -217,11 +217,10 @@ max-statements = 50    # Maximum statements in function
 max-public-methods = 20
 
 [tool.ruff.lint.isort]
+# Omit lines-after-imports (fixed values like 2 conflict with Black on blank lines after imports).
 known-first-party = ["asitop"]
-# Modern import sorting configuration
 force-single-line = false
 force-sort-within-sections = true
-lines-after-imports = 2
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
 
 [tool.ruff.lint.flake8-bugbear]
