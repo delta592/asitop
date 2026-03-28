@@ -5,6 +5,7 @@ This module tests utility functions including powermetrics parsing,
 RAM metrics collection, SOC information gathering, and file operations.
 """
 
+import math
 import pathlib
 import plistlib
 import tempfile
@@ -27,7 +28,7 @@ class TestConvertToGB(unittest.TestCase):
 
         bytes_value = 1073741824
         result = convert_to_gb(bytes_value)
-        assert result == 1.0
+        assert math.isclose(result, 1.0)
 
     def test_convert_to_gb_zero(self) -> None:
         """
@@ -38,7 +39,7 @@ class TestConvertToGB(unittest.TestCase):
         from asitop.utils import convert_to_gb
 
         result = convert_to_gb(0)
-        assert result == 0.0
+        assert math.isclose(result, 0.0)
 
     def test_convert_to_gb_large_value(self) -> None:
         """
@@ -50,7 +51,7 @@ class TestConvertToGB(unittest.TestCase):
 
         bytes_value = 68719476736
         result = convert_to_gb(bytes_value)
-        assert result == 64.0
+        assert math.isclose(result, 64.0)
 
     def test_convert_to_gb_fractional(self) -> None:
         """
@@ -226,12 +227,12 @@ class TestGetRamMetricsDict(unittest.TestCase):
 
         result = get_ram_metrics_dict()
 
-        assert result["total_GB"] == 16.0
-        assert result["free_GB"] == 8.0
-        assert result["used_GB"] == 8.0
+        assert math.isclose(result["total_GB"], 16.0)
+        assert math.isclose(result["free_GB"], 8.0)
+        assert math.isclose(result["used_GB"], 8.0)
         assert result["free_percent"] == 50
-        assert result["swap_total_GB"] == 2.0
-        assert result["swap_used_GB"] == 1.0
+        assert math.isclose(result["swap_total_GB"], 2.0)
+        assert math.isclose(result["swap_used_GB"], 1.0)
 
     @patch("psutil.virtual_memory")
     @patch("psutil.swap_memory")
@@ -255,7 +256,7 @@ class TestGetRamMetricsDict(unittest.TestCase):
 
         result = get_ram_metrics_dict()
 
-        assert result["swap_total_GB"] == 0.0
+        assert math.isclose(result["swap_total_GB"], 0.0)
         assert result["swap_free_percent"] == 0  # Changed from None to 0 for type consistency
 
     @patch("psutil.virtual_memory")

@@ -5,6 +5,7 @@ This module tests all parsing functions that extract metrics from
 powermetrics output, including thermal pressure, bandwidth, CPU, and GPU data.
 """
 
+import math
 from typing import Any
 import unittest
 
@@ -296,10 +297,10 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        assert result["ane_W"] == 5.0
-        assert result["cpu_W"] == 10.0
-        assert result["gpu_W"] == 8.0
-        assert result["package_W"] == 23.0
+        assert math.isclose(result["ane_W"], 5.0)
+        assert math.isclose(result["cpu_W"], 10.0)
+        assert math.isclose(result["gpu_W"], 8.0)
+        assert math.isclose(result["package_W"], 23.0)
 
     def test_parse_cpu_metrics_gpu_energy_fallback(self) -> None:
         """
@@ -324,7 +325,7 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        assert result["gpu_W"] == 9.0
+        assert math.isclose(result["gpu_W"], 9.0)
 
     def test_parse_cpu_metrics_gpu_energy_prefers_gpu_sampler(self) -> None:
         """
@@ -348,7 +349,7 @@ class TestParseCPUMetrics(unittest.TestCase):
         }
         result = parse_cpu_metrics(mock_data)
 
-        assert result["gpu_W"] == 10.0
+        assert math.isclose(result["gpu_W"], 10.0)
 
     def test_parse_cpu_metrics_individual_cores(self) -> None:
         """

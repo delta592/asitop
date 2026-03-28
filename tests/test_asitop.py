@@ -312,7 +312,7 @@ class TestGetAvgFunction(unittest.TestCase):
         """
         test_values = [10, 20, 30, 40, 50]
         avg = sum(test_values) / len(test_values)
-        assert avg == 30.0
+        self.assertAlmostEqual(avg, 30.0)
 
     def test_get_avg_single_value(self) -> None:
         """
@@ -322,7 +322,7 @@ class TestGetAvgFunction(unittest.TestCase):
         """
         test_values = [42]
         avg = sum(test_values) / len(test_values)
-        assert avg == 42.0
+        self.assertAlmostEqual(avg, 42.0)
 
     def test_get_avg_floating_point(self) -> None:
         """
