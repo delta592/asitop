@@ -7,7 +7,7 @@ name = "asitop"
 version = "0.0.22"
 description = "Performance monitoring CLI tool for Apple Silicon"
 readme = "README.md"
-requires-python = "==3.14.3"
+requires-python = "==3.14.4"
 license = {text = "MIT"}
 keywords = ["asitop", "apple silicon", "performance", "monitoring"]
 authors = [
