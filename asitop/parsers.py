@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TypedDict, cast
 
 # Type alias for improved readability (Python 3.12+)
 type PowermetricsDict = dict[str, Any]
@@ -6,7 +6,20 @@ type BandwidthMetrics = dict[str, float]
 # CPUMetrics uses Any because it contains heterogeneous types that would require
 # complex TypedDict to represent accurately. This is a pragmatic trade-off.
 type CPUMetrics = dict[str, Any]
-type GPUMetrics = dict[str, int]
+
+
+class BandwidthCounterMetric(TypedDict):
+    """One bandwidth_counters row from powermetrics plist."""
+
+    name: str
+    value: float | int
+
+
+class GpuMetricsOut(TypedDict):
+    """Structured output of parse_gpu_metrics (fixed keys)."""
+
+    freq_MHz: int
+    active: int
 
 
 def parse_thermal_pressure(powermetrics_parse: PowermetricsDict) -> str:
@@ -30,7 +43,10 @@ def parse_bandwidth_metrics(powermetrics_parse: PowermetricsDict) -> BandwidthMe
     Returns:
         Dictionary with bandwidth metrics in GB/s
     """
-    bandwidth_metrics = powermetrics_parse["bandwidth_counters"]
+    bandwidth_metrics = cast(
+        "list[BandwidthCounterMetric]",
+        powermetrics_parse["bandwidth_counters"],
+    )
     bandwidth_metrics_dict: BandwidthMetrics = {}
     data_fields = [
         "PCPU0 DCS RD",
@@ -84,9 +100,9 @@ def parse_bandwidth_metrics(powermetrics_parse: PowermetricsDict) -> BandwidthMe
     ]
     for h in data_fields:
         bandwidth_metrics_dict[h] = 0
-    for metric in bandwidth_metrics:
-        if metric["name"] in data_fields:
-            bandwidth_metrics_dict[metric["name"]] = metric["value"] / (1e9)
+    for row in bandwidth_metrics:
+        if row["name"] in data_fields:
+            bandwidth_metrics_dict[row["name"]] = row["value"] / (1e9)
     bandwidth_metrics_dict["PCPU DCS RD"] = (
         bandwidth_metrics_dict["PCPU DCS RD"]
         + bandwidth_metrics_dict["PCPU0 DCS RD"]
@@ -238,7 +254,7 @@ def parse_cpu_metrics(powermetrics_parse: PowermetricsDict) -> CPUMetrics:
     return cpu_metric_dict
 
 
-def parse_gpu_metrics(powermetrics_parse: PowermetricsDict) -> GPUMetrics:
+def parse_gpu_metrics(powermetrics_parse: PowermetricsDict) -> GpuMetricsOut:
     """Parse GPU metrics from powermetrics data.
 
     Args:

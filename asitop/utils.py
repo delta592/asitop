@@ -9,6 +9,8 @@ from typing import Any, Literal
 import psutil
 
 from .parsers import (
+    CPUMetrics,
+    GpuMetricsOut,
     parse_cpu_metrics,
     parse_gpu_metrics,
     parse_thermal_pressure,
@@ -138,7 +140,7 @@ def get_powermetrics_path(timecode: str = "0") -> str:
 def parse_powermetrics(
     timecode: str = "0",
     path: str | None = None,
-) -> tuple[dict[str, Any], dict[str, Any], str, None, int] | Literal[False]:
+) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int] | Literal[False]:
     """Parse powermetrics plist file and extract metrics.
 
     To avoid unbounded memory growth, only the last slice of the file is read.

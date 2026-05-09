@@ -147,7 +147,7 @@ format-check: install-dev
 # Run type checker (Mypy)
 type-check: install-dev
 	@echo "Running Mypy type checker..."
-	$(UV_RUN) mypy asitop/
+	$(UV_RUN) mypy --native-parser asitop/
 
 # Run Pyright type checker
 type-check-pyright: install-dev
@@ -244,7 +244,7 @@ ci-quality:
 	$(UV_RUN) black --check asitop/ tests/
 	@echo ""
 	@echo "=== Running Mypy type checker ==="
-	$(UV_RUN) mypy asitop/
+	$(UV_RUN) mypy --native-parser asitop/
 	@echo ""
 	@echo "=== Running Pyright type checker ==="
 	$(UV_RUN) pyright asitop/

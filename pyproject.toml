@@ -34,7 +34,7 @@ test = [
     "coverage==7.13.5",
     "ruff==0.15.12",
     "black==26.3.1",
-    "mypy==1.20.2",
+    "mypy[native-parser]==2.0.0",
     "pyright==1.1.409",
     "types-psutil==7.2.2.20260508",
 ]
@@ -78,7 +78,10 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
+# Align with mypy 2 defaults (explicit for clarity and reproducibility)
+local_partial_types = true
+strict_bytes = true
 warn_return_any = true
 warn_unused_configs = true
 warn_redundant_casts = true

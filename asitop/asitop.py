@@ -8,10 +8,10 @@ import sys
 import termios
 import time
 import tty
-from typing import Any
 
 from dashing import HChart, HGauge, HSplit, VGauge, VSplit
 
+from .parsers import CPUMetrics, GpuMetricsOut
 from .utils import (
     clear_console,
     get_ram_metrics_dict,
@@ -48,7 +48,7 @@ def check_for_quit_key() -> bool:
 
 
 def calculate_gpu_usage(
-    gpu_metrics: dict[str, Any],
+    gpu_metrics: GpuMetricsOut,
     gpu_power_watts: float,
     gpu_max_power: float,
     last_gpu_freq_mhz: int | None,
@@ -227,7 +227,7 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
 
     print("\n[3/3] Waiting for first reading...\n")
 
-    def get_reading(wait: float = 0.1) -> tuple[dict[str, Any], dict[str, Any], str, None, int]:
+    def get_reading(wait: float = 0.1) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int]:
         ready = parse_powermetrics(timecode=timecode)
         while not ready:
             time.sleep(wait)
