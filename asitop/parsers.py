@@ -22,6 +22,160 @@ class GpuMetricsOut(TypedDict):
     active: int
 
 
+def _freq_mhz_from_hz_and_dvfm(
+    raw_freq_hz: float | int | None,
+    dvfm_states: list[dict[str, Any]] | None,
+) -> int:
+    """Normalize cluster/GPU frequency to MHz; derive from DVFM when freq_hz is zero."""
+    try:
+        freq_value = float(raw_freq_hz or 0)
+    except (TypeError, ValueError):
+        freq_value = 0.0
+
+    match freq_value:
+        case freq if freq > 1e5:
+            freq_mhz = int(freq / 1e6)
+        case freq:
+            freq_mhz = int(freq)
+
+    if freq_mhz == 0 and dvfm_states:
+        weighted_freq = sum(
+            state.get("freq", 0) * state.get("used_ratio", 0) for state in dvfm_states
+        )
+        total_ratio = sum(state.get("used_ratio", 0) for state in dvfm_states)
+        if total_ratio > 0:
+            freq_mhz = int(weighted_freq / total_ratio)
+
+    return freq_mhz
+
+
+def _rail_watts(
+    *,
+    power_mw: float | int | None,
+    energy_mj: float | int | None,
+    elapsed_s: float,
+) -> float:
+    """Return average rail power in watts for the sample window."""
+    if power_mw is not None:
+        return float(power_mw) / 1000.0
+    energy = float(energy_mj or 0)
+    if elapsed_s > 0:
+        return energy / 1000.0 / elapsed_s
+    # Legacy powermetrics without elapsed_ns: store mJ/1000; UI divides by --interval.
+    return energy / 1000.0
+
+
+def display_power_watts(stored_value: float, instant: bool, interval: float) -> float:
+    """Convert a stored rail value to watts for display."""
+    if instant:
+        return stored_value
+    if interval > 0:
+        return stored_value / interval
+    return stored_value
+
+
+def parse_ane_metrics(powermetrics_parse: PowermetricsDict) -> dict[str, int]:
+    """Parse ANE frequency and utilization when powermetrics exposes an ANE block."""
+    ane_block = powermetrics_parse.get("ane")
+    if ane_block is None:
+        ane_block = powermetrics_parse.get("processor", {}).get("ane")
+
+    if not ane_block:
+        return {}
+
+    blocks: list[dict[str, Any]]
+    if isinstance(ane_block, list):
+        blocks = [b for b in ane_block if isinstance(b, dict)]
+    elif isinstance(ane_block, dict):
+        blocks = [ane_block]
+    else:
+        return {}
+
+    if not blocks:
+        return {}
+
+    freq_values: list[int] = []
+    active_values: list[int] = []
+    for block in blocks:
+        freq_mhz = _freq_mhz_from_hz_and_dvfm(
+            block.get("freq_hz"),
+            block.get("dvfm_states"),
+        )
+        if freq_mhz > 0:
+            freq_values.append(freq_mhz)
+        idle_ratio = block.get("idle_ratio")
+        if idle_ratio is not None:
+            active_values.append(max(0, min(100, int((1 - float(idle_ratio)) * 100))))
+
+    result: dict[str, int] = {}
+    if freq_values:
+        result["ane_freq_MHz"] = max(freq_values)
+    if active_values:
+        result["ane_active"] = int(sum(active_values) / len(active_values))
+    return result
+
+
+def parse_extended_metrics(powermetrics_parse: PowermetricsDict) -> dict[str, Any]:
+    """Parse optional extended powermetrics samplers (SFI, battery, network, disk)."""
+    extended: dict[str, Any] = {}
+
+    sfi = powermetrics_parse.get("sfi")
+    if isinstance(sfi, dict):
+        classes = sfi.get("sfi_classes", {})
+        if isinstance(classes, dict):
+            throttled = {name: value for name, value in classes.items() if value}
+            if throttled:
+                extended["sfi_throttle"] = throttled
+
+    processor = powermetrics_parse.get("processor", {})
+    if isinstance(processor, dict) and (zones := processor.get("cpu_power_zones_engaged")):
+        try:
+            zones_val = float(zones)
+        except (TypeError, ValueError):
+            zones_val = 0.0
+        if zones_val > 0:
+            extended["cpu_power_zones_engaged"] = zones_val
+
+    battery = powermetrics_parse.get("battery")
+    if isinstance(battery, dict):
+        for key in ("discharge_rate", "discharge_rate_mw", "power_mw"):
+            if key in battery:
+                extended["battery_discharge_mw"] = battery[key]
+                break
+
+    network = powermetrics_parse.get("network")
+    if isinstance(network, dict):
+        extended["network"] = {
+            "rx_mbps": float(network.get("ibyte_rate", 0) or 0) * 8 / 1e6,
+            "tx_mbps": float(network.get("obyte_rate", 0) or 0) * 8 / 1e6,
+        }
+
+    disk = powermetrics_parse.get("disk")
+    if isinstance(disk, dict):
+        extended["disk"] = {
+            "read_mbps": float(disk.get("rbytes_per_s", 0) or 0) / 1e6,
+            "write_mbps": float(disk.get("wbytes_per_s", 0) or 0) / 1e6,
+        }
+
+    return extended
+
+
+def format_extended_status(extended: dict[str, Any]) -> str:
+    """Build a compact status suffix for extended powermetrics fields."""
+    parts: list[str] = []
+    if zones := extended.get("cpu_power_zones_engaged"):
+        parts.append(f"zones:{zones:.0%}")
+    if sfi := extended.get("sfi_throttle"):
+        parts.append(f"SFI:{len(sfi)}")
+    if discharge := extended.get("battery_discharge_mw"):
+        parts.append(f"bat:{float(discharge) / 1000:.1f}W")
+    if net := extended.get("network"):
+        parts.append(f"net↓{net['rx_mbps']:.0f}↑{net['tx_mbps']:.0f}Mb/s")
+    if disk := extended.get("disk"):
+        parts.append(f"disk R{disk['read_mbps']:.0f}/W{disk['write_mbps']:.0f}MB/s")
+    return " | ".join(parts)
+
+
 def parse_thermal_pressure(powermetrics_parse: PowermetricsDict) -> str:
     """Parse thermal pressure from powermetrics data.
 
@@ -179,17 +333,27 @@ def parse_cpu_metrics(powermetrics_parse: PowermetricsDict) -> CPUMetrics:
     cpu_metric_dict: CPUMetrics = {}
 
     # cpu_clusters
+    elapsed_s = float(powermetrics_parse.get("elapsed_ns") or 0) / 1e9
+    instant_power = "cpu_power" in cpu_metrics
+
     cpu_clusters = cpu_metrics["clusters"]
     for cluster in cpu_clusters:
-        name = cluster["name"]
-        cpu_metric_dict[f"{name}_freq_Mhz"] = int(cluster["freq_hz"] / 1e6)
-        cpu_metric_dict[f"{name}_active"] = round((1 - cluster["idle_ratio"]) * 100)
+        cluster_name = cluster["name"]
+        cluster_freq_mhz = _freq_mhz_from_hz_and_dvfm(
+            cluster.get("freq_hz"),
+            cluster.get("dvfm_states"),
+        )
+        cpu_metric_dict[f"{cluster_name}_freq_Mhz"] = cluster_freq_mhz
+        cpu_metric_dict[f"{cluster_name}_active"] = round((1 - cluster["idle_ratio"]) * 100)
 
         for cpu in cluster["cpus"]:
-            name = "E-Cluster" if name[0] == "E" else "P-Cluster"
+            name = "E-Cluster" if cluster_name[0] == "E" else "P-Cluster"
             core = e_core if name[0] == "E" else p_core
             core.append(cpu["cpu"])
-            cpu_metric_dict[f"{name}{cpu['cpu']}_freq_Mhz"] = int(cpu["freq_hz"] / 1e6)
+            cpu_metric_dict[f"{name}{cpu['cpu']}_freq_Mhz"] = _freq_mhz_from_hz_and_dvfm(
+                cpu.get("freq_hz"),
+                cpu.get("dvfm_states"),
+            )
             cpu_metric_dict[f"{name}{cpu['cpu']}_active"] = round((1 - cpu["idle_ratio"]) * 100)
     cpu_metric_dict["e_core"] = e_core
     cpu_metric_dict["p_core"] = p_core
@@ -235,22 +399,38 @@ def parse_cpu_metrics(powermetrics_parse: PowermetricsDict) -> CPUMetrics:
             cpu_metric_dict["P-Cluster_freq_Mhz"] = max(
                 cpu_metric_dict["P0-Cluster_freq_Mhz"], cpu_metric_dict["P1-Cluster_freq_Mhz"]
             )
-    # power
-    cpu_metric_dict["ane_W"] = cpu_metrics["ane_energy"] / 1000
-    # cpu_metric_dict["dram_W"] = cpu_metrics["dram_energy"]/1000
-
-    # powermetrics historically reports GPU rail energy under the processor sampler.
-    # Newer builds also expose it in the GPU sampler. Prefer the GPU sampler when it
-    # has data; otherwise fall back to the processor sampler so the GPU power chart
-    # always gets a usable value.
+    # Power: prefer instantaneous mW rails (macOS 15+/26.x); fall back to energy / elapsed.
+    gpu_sampler = powermetrics_parse.get("gpu", {})
     gpu_energy_proc = cpu_metrics.get("gpu_energy")
-    gpu_energy_gpu = powermetrics_parse.get("gpu", {}).get("gpu_energy")
+    gpu_energy_gpu = gpu_sampler.get("gpu_energy")
     gpu_energy = gpu_energy_gpu if gpu_energy_gpu not in {None, 0} else gpu_energy_proc
     gpu_energy = gpu_energy or 0
+    gpu_power_mw = gpu_sampler.get("gpu_power")
+    if gpu_power_mw in {None, 0}:
+        gpu_power_mw = cpu_metrics.get("gpu_power")
 
-    cpu_metric_dict["cpu_W"] = cpu_metrics["cpu_energy"] / 1000
-    cpu_metric_dict["gpu_W"] = gpu_energy / 1000
-    cpu_metric_dict["package_W"] = cpu_metrics["combined_power"] / 1000
+    cpu_metric_dict["cpu_W"] = _rail_watts(
+        power_mw=cpu_metrics.get("cpu_power"),
+        energy_mj=cpu_metrics.get("cpu_energy"),
+        elapsed_s=elapsed_s,
+    )
+    cpu_metric_dict["gpu_W"] = _rail_watts(
+        power_mw=gpu_power_mw,
+        energy_mj=gpu_energy,
+        elapsed_s=elapsed_s,
+    )
+    cpu_metric_dict["ane_W"] = _rail_watts(
+        power_mw=cpu_metrics.get("ane_power"),
+        energy_mj=cpu_metrics.get("ane_energy"),
+        elapsed_s=elapsed_s,
+    )
+    cpu_metric_dict["package_W"] = _rail_watts(
+        power_mw=cpu_metrics.get("combined_power"),
+        energy_mj=None,
+        elapsed_s=elapsed_s,
+    )
+    cpu_metric_dict["_instant_power"] = instant_power
+    cpu_metric_dict.update(parse_ane_metrics(powermetrics_parse))
     return cpu_metric_dict
 
 
@@ -264,32 +444,10 @@ def parse_gpu_metrics(powermetrics_parse: PowermetricsDict) -> GpuMetricsOut:
         Dictionary with GPU frequency in MHz and utilization percentage
     """
     gpu_metrics = powermetrics_parse["gpu"]
-    raw_freq = gpu_metrics.get("freq_hz", 0) or 0
-
-    try:
-        freq_value = float(raw_freq)
-    except (TypeError, ValueError):
-        freq_value = 0.0
-
-    # Newer powermetrics builds expose GPU frequency in MHz instead of Hz.
-    # Accept either by detecting the magnitude and normalizing to MHz.
-    # Using match-case for cleaner logic (Python 3.10+)
-    match freq_value:
-        case freq if freq > 1e5:
-            freq_mhz = int(freq / 1e6)
-        case freq:
-            freq_mhz = int(freq)
-
-    # If frequency is still zero but DVFM residency is present, derive
-    # an average from the residency table to avoid showing "N/A".
-    if freq_mhz == 0 and (dvfm_states := gpu_metrics.get("dvfm_states")):
-        # Using walrus operator for cleaner code (Python 3.8+, optimized in 3.12+)
-        weighted_freq = sum(
-            state.get("freq", 0) * state.get("used_ratio", 0) for state in dvfm_states
-        )
-        total_ratio = sum(state.get("used_ratio", 0) for state in dvfm_states)
-        if total_ratio > 0:
-            freq_mhz = int(weighted_freq / total_ratio)
+    freq_mhz = _freq_mhz_from_hz_and_dvfm(
+        gpu_metrics.get("freq_hz"),
+        gpu_metrics.get("dvfm_states"),
+    )
 
     active_percent = int((1 - gpu_metrics.get("idle_ratio", 0)) * 100)
     active_percent = max(0, min(active_percent, 100))

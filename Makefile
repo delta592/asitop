@@ -3,9 +3,9 @@
 # Uses uv for dependency management
 
 .PHONY: help sync install install-dev test test-verbose test-coverage \
-        test-watch clean clean-pyc clean-test run lint format format-check \
-        type-check check fix coverage-html coverage-report dist upload-test upload \
-        ci-test ci-quality ci-check
+        test-watch clean clean-pyc clean-test run run-extended run-nosudo lint \
+        format format-check type-check check fix coverage-html coverage-report \
+        dist upload-test upload ci-test ci-quality ci-check
 
 # uv configuration
 UV := uv
@@ -30,6 +30,7 @@ help:
 	@echo ""
 	@echo "Running commands:"
 	@echo "  make run            Run asitop with sudo (requires password)"
+	@echo "  make run-extended   Run asitop with sudo and --extended samplers"
 	@echo "  make run-nosudo     Run asitop without sudo (will prompt later)"
 	@echo ""
 	@echo "Code quality commands:"
@@ -115,6 +116,12 @@ run: install
 	@echo "Running asitop with sudo (password required)..."
 	@echo "Press Ctrl+C or 'q' to stop"
 	@sudo $(UV_RUN) python -m asitop
+
+# Run asitop with sudo and extended powermetrics samplers
+run-extended: install
+	@echo "Running asitop with sudo and --extended (password required)..."
+	@echo "Press Ctrl+C or 'q' to stop"
+	@sudo $(UV_RUN) python -m asitop --extended
 
 # Run asitop without sudo (will prompt when needed)
 run-nosudo: install

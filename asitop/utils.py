@@ -12,6 +12,7 @@ from .parsers import (
     CPUMetrics,
     GpuMetricsOut,
     parse_cpu_metrics,
+    parse_extended_metrics,
     parse_gpu_metrics,
     parse_thermal_pressure,
 )
@@ -140,7 +141,7 @@ def get_powermetrics_path(timecode: str = "0") -> str:
 def parse_powermetrics(
     timecode: str = "0",
     path: str | None = None,
-) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int] | Literal[False]:
+) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int, dict[str, Any]] | Literal[False]:
     """Parse powermetrics plist file and extract metrics.
 
     To avoid unbounded memory growth, only the last slice of the file is read.
@@ -152,8 +153,8 @@ def parse_powermetrics(
         path: Optional explicit path (for testing). If None, uses get_powermetrics_path()
 
     Returns:
-        Tuple of (cpu_metrics, gpu_metrics, thermal_pressure, bandwidth_metrics, timestamp)
-        or False if parsing fails
+        Tuple of (cpu_metrics, gpu_metrics, thermal_pressure, bandwidth_metrics,
+        timestamp, extended_metrics) or False if parsing fails
     """
     file_path = path if path is not None else get_powermetrics_path(timecode)
     try:
@@ -174,6 +175,7 @@ def parse_powermetrics(
                 cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
                 gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
                 bandwidth_metrics = None
+                extended_metrics = parse_extended_metrics(powermetrics_parse)
                 timestamp = powermetrics_parse["timestamp"]
                 return (
                     cpu_metrics_dict,
@@ -181,6 +183,7 @@ def parse_powermetrics(
                     thermal_pressure,
                     bandwidth_metrics,
                     timestamp,
+                    extended_metrics,
                 )
             except Exception:
                 continue
@@ -207,7 +210,11 @@ def convert_to_gb(value: float) -> float:
 
 
 def run_powermetrics_process(
-    timecode: str, nice: int = 10, interval: int = 1000
+    timecode: str,
+    nice: int = 10,
+    interval: int = 1000,
+    *,
+    extended: bool = False,
 ) -> subprocess.Popen[bytes]:
     """Start powermetrics subprocess to collect system metrics.
 
@@ -215,6 +222,7 @@ def run_powermetrics_process(
         timecode: Unique identifier for output file
         nice: Process priority (higher = lower priority)
         interval: Sampling interval in milliseconds
+        extended: Include SFI, battery, network, and disk samplers
 
     Returns:
         Running Popen process object
@@ -226,6 +234,10 @@ def run_powermetrics_process(
 
     output_file = get_powermetrics_path(timecode)
 
+    samplers = "cpu_power,gpu_power,thermal"
+    if extended:
+        samplers += ",sfi,battery,network,disk"
+
     command = [
         "sudo",
         "nice",
@@ -233,7 +245,8 @@ def run_powermetrics_process(
         str(nice),
         "powermetrics",
         "--samplers",
-        "cpu_power,gpu_power,thermal",
+        samplers,
+        "--handle-invalid-values",
         "-o",
         output_file,
         "-f",

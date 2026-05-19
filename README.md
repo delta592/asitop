@@ -24,9 +24,9 @@ A Python-based `nvtop`-inspired command line tool for Apple Silicon Macs (M1, M2
   * ANE utilization (measured by power)
 * Memory info:
   * RAM and swap, size and usage
-  * (Apple removed memory bandwidth from `powermetrics`)
+  * (Memory bandwidth via DCS is no longer exposed by `powermetrics` on recent macOS)
 * Power info:
-  * CPU power, GPU power (Apple removed package power from `powermetrics`)
+  * CPU, GPU, ANE, and package (combined) power from `powermetrics` rail readings
   * Chart for CPU/GPU power
   * Peak power, rolling average display
 
@@ -79,12 +79,13 @@ asitop
 # to quit: press 'q' or Ctrl+C
 
 # advanced options
-asitop [-h] [--interval INTERVAL] [--color COLOR] [--avg AVG]
+asitop [-h] [--interval INTERVAL] [--color COLOR] [--avg AVG] [--extended]
 optional arguments:
   -h, --help           show this help message and exit
   --interval INTERVAL  Display interval and sampling interval for powermetrics (seconds)
   --color COLOR        Choose display color (0~8)
   --avg AVG            Interval for averaged values (seconds)
+  --extended           Also sample SFI, battery, network, and disk via powermetrics
 ```
 
 ## How it works
@@ -92,9 +93,9 @@ optional arguments:
 `powermetrics` is used to measure the following:
 
 * CPU/GPU utilization via active residency
-* CPU/GPU frequency
-* Package/CPU/GPU/ANE energy consumption
-* CPU/GPU/Media Total memory bandwidth via the DCS (DRAM Command Scheduler)
+* CPU/GPU frequency (including DVFM residency when hardware frequency is unavailable)
+* Package/CPU/GPU/ANE power (instantaneous rail readings on recent macOS; energy fallback on older releases)
+* Optional extended samplers with `--extended`: SFI throttling, battery discharge, network and disk throughput
 
 [`psutil`](https://github.com/giampaolo/psutil) is used to measure the following:
 

@@ -163,6 +163,7 @@ class TestMainFunction(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
 
                 def mock_parse_pm_func(timecode):
@@ -236,6 +237,7 @@ class TestMainFunction(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
                 mock_parse.return_value = mock_reading
 
@@ -429,10 +431,13 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         Validates conversion from power consumption to utilization
         percentage using ANE max power (8W).
         """
+        from asitop.parsers import display_power_watts
+
         ane_W = 4.0
         interval = 1
         ane_max_power = 8.0
-        ane_util_percent = int(ane_W / interval / ane_max_power * 100)
+        ane_power = display_power_watts(ane_W, instant=True, interval=interval)
+        ane_util_percent = int(ane_power / ane_max_power * 100)
         assert ane_util_percent == 50
 
     def test_ane_util_calculation_idle(self) -> None:
@@ -441,10 +446,13 @@ class TestANEUtilizationCalculation(unittest.TestCase):
 
         Edge case: Ensures 0% utilization when ANE power is zero.
         """
+        from asitop.parsers import display_power_watts
+
         ane_W = 0.0
         interval = 1
         ane_max_power = 8.0
-        ane_util_percent = int(ane_W / interval / ane_max_power * 100)
+        ane_power = display_power_watts(ane_W, instant=True, interval=interval)
+        ane_util_percent = int(ane_power / ane_max_power * 100)
         assert ane_util_percent == 0
 
     def test_ane_util_calculation_max(self) -> None:
@@ -454,10 +462,13 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         Edge case: Validates 100% utilization at peak ANE power
         consumption.
         """
+        from asitop.parsers import display_power_watts
+
         ane_W = 8.0
         interval = 1
         ane_max_power = 8.0
-        ane_util_percent = int(ane_W / interval / ane_max_power * 100)
+        ane_power = display_power_watts(ane_W, instant=True, interval=interval)
+        ane_util_percent = int(ane_power / ane_max_power * 100)
         assert ane_util_percent == 100
 
     def test_ane_util_calculation_different_interval(self) -> None:
@@ -467,10 +478,13 @@ class TestANEUtilizationCalculation(unittest.TestCase):
         Ensures calculation accounts for interval duration when
         converting energy to power.
         """
+        from asitop.parsers import display_power_watts
+
         ane_W = 10.0
         interval = 2
         ane_max_power = 8.0
-        ane_util_percent = int(ane_W / interval / ane_max_power * 100)
+        ane_power = display_power_watts(ane_W, instant=False, interval=interval)
+        ane_util_percent = int(ane_power / ane_max_power * 100)
         self.assertAlmostEqual(ane_util_percent, 62, delta=1)
 
 
@@ -633,6 +647,7 @@ class TestGetReadingRetry(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
 
                 # Return None twice, then valid data, then raise to exit
@@ -714,6 +729,7 @@ class TestExtendedPCoreSupport(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
 
                 mock_parse_pm.return_value = valid_reading
@@ -802,6 +818,7 @@ class TestShowCoresMode(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
 
                 call_count = [0]
@@ -889,6 +906,7 @@ class TestRAMSwapHandling(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
 
                 # Return data once with increasing timestamp, then raise
@@ -905,6 +923,7 @@ class TestRAMSwapHandling(unittest.TestCase):
                             valid_reading[2],
                             valid_reading[3],
                             timestamps[min(call_count[0] - 1, 1)],
+                            valid_reading[5],
                         )
                     raise KeyboardInterrupt
 
@@ -986,6 +1005,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                     "Nominal",
                     None,
                     1234567890,
+                    {},
                 )
 
                 call_count = [0]
@@ -1060,6 +1080,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                     "Moderate",  # Non-nominal thermal pressure
                     None,
                     1234567890,
+                    {},
                 )
 
                 call_count = [0]

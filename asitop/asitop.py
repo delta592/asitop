@@ -11,7 +11,7 @@ import tty
 
 from dashing import HChart, HGauge, HSplit, VGauge, VSplit
 
-from .parsers import CPUMetrics, GpuMetricsOut
+from .parsers import CPUMetrics, GpuMetricsOut, display_power_watts, format_extended_status
 from .utils import (
     clear_console,
     get_ram_metrics_dict,
@@ -101,6 +101,11 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
         type=int,
         default=DEFAULT_NICE_PRIORITY,
         help="nice value for powermetrics (lower is higher priority, default 10)",
+    )
+    parser.add_argument(
+        "--extended",
+        action="store_true",
+        help="Enable extra powermetrics samplers (SFI, battery, network, disk)",
     )
     args = parser.parse_args()
     print("\nASITOP - Performance monitoring CLI tool for Apple Silicon")
@@ -223,11 +228,15 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
     timecode = str(int(time.time()))
 
     sample_ms = max(MIN_SAMPLE_INTERVAL_MS, int(args.interval * 1000))
-    powermetrics_process = run_powermetrics_process(timecode, interval=sample_ms, nice=args.nice)
+    powermetrics_process = run_powermetrics_process(
+        timecode, interval=sample_ms, nice=args.nice, extended=args.extended
+    )
 
     print("\n[3/3] Waiting for first reading...\n")
 
-    def get_reading(wait: float = 0.1) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int]:
+    def get_reading(
+        wait: float = 0.1,
+    ) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int, dict[str, object]]:
         ready = parse_powermetrics(timecode=timecode)
         while not ready:
             time.sleep(wait)
@@ -235,7 +244,7 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
         return ready
 
     ready = get_reading()
-    last_timestamp = ready[-1]
+    last_timestamp = ready[4]
 
     def get_avg(inlist: deque[float]) -> float:
         return sum(inlist) / len(inlist)
@@ -272,6 +281,7 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     timecode,
                     interval=max(MIN_SAMPLE_INTERVAL_MS, int(args.interval * 1000)),
                     nice=args.nice,
+                    extended=args.extended,
                 )
             count += 1
             ready_result = parse_powermetrics(timecode=timecode)
@@ -283,10 +293,12 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     thermal_pressure,
                     _bandwidth_metrics,
                     timestamp,
+                    extended_metrics,
                 ) = ready
 
                 if timestamp > last_timestamp:
                     last_timestamp = timestamp
+                    instant_power = bool(cpu_metrics_dict.get("_instant_power"))
 
                     if thermal_pressure == THERMAL_PRESSURE_NOMINAL:
                         thermal_throttle = "no"
@@ -327,7 +339,9 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                             )
                             core_gauges[gauge_idx].value = int(cpu_metrics_dict[core_key])
 
-                    gpu_power_w = cpu_metrics_dict["gpu_W"] / args.interval
+                    gpu_power_w = display_power_watts(
+                        cpu_metrics_dict["gpu_W"], instant_power, args.interval
+                    )
                     gpu_util_percent, gpu_freq_mhz = calculate_gpu_usage(
                         gpu_metrics_dict, gpu_power_w, gpu_max_power, last_gpu_freq_mhz
                     )
@@ -339,11 +353,22 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     gpu_gauge.title = f"GPU Usage: {gpu_util_percent}% @ {gpu_freq_display} MHz"
                     gpu_gauge.value = gpu_util_percent
 
-                    ane_util_percent = int(
-                        cpu_metrics_dict["ane_W"] / args.interval / ANE_MAX_POWER_WATTS * 100
+                    ane_power = display_power_watts(
+                        cpu_metrics_dict["ane_W"], instant_power, args.interval
                     )
-                    ane_power = cpu_metrics_dict["ane_W"] / args.interval
-                    ane_gauge.title = f"ANE Usage: {ane_util_percent}% @ {ane_power:.1f} W"
+                    ane_active = cpu_metrics_dict.get("ane_active")
+                    if ane_active is not None and ane_active > 0:
+                        ane_util_percent = int(ane_active)
+                    else:
+                        ane_util_percent = int(ane_power / ANE_MAX_POWER_WATTS * 100)
+                    ane_util_percent = max(0, min(ane_util_percent, 100))
+                    ane_freq = cpu_metrics_dict.get("ane_freq_MHz")
+                    if ane_freq:
+                        ane_gauge.title = (
+                            f"ANE Usage: {ane_util_percent}% @ {ane_power:.1f} W, {ane_freq} MHz"
+                        )
+                    else:
+                        ane_gauge.title = f"ANE Usage: {ane_util_percent}% @ {ane_power:.1f} W"
                     ane_gauge.value = ane_util_percent
 
                     ram_metrics_dict = get_ram_metrics_dict()
@@ -364,20 +389,25 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     # Type assertion: free_percent is always int, not float
                     ram_gauge.value = int(ram_metrics_dict["free_percent"])
 
-                    package_power_w = cpu_metrics_dict["package_W"] / args.interval
+                    package_power_w = display_power_watts(
+                        cpu_metrics_dict["package_W"], instant_power, args.interval
+                    )
                     package_peak_power = max(package_peak_power, package_power_w)
                     avg_package_power_list.append(package_power_w)
                     avg_package_power = get_avg(avg_package_power_list)
-                    power_charts.title = (
+                    power_title = (
                         f"CPU+GPU+ANE Power: {package_power_w:.2f}W "
                         f"(avg: {avg_package_power:.2f}W peak: {package_peak_power:.2f}W) "
                         f"throttle: {thermal_throttle}"
                     )
+                    if extended_status := format_extended_status(extended_metrics):
+                        power_title = f"{power_title} | {extended_status}"
+                    power_charts.title = power_title
 
-                    cpu_power_percent = int(
-                        cpu_metrics_dict["cpu_W"] / args.interval / cpu_max_power * 100
+                    cpu_power_w = display_power_watts(
+                        cpu_metrics_dict["cpu_W"], instant_power, args.interval
                     )
-                    cpu_power_w = cpu_metrics_dict["cpu_W"] / args.interval
+                    cpu_power_percent = int(cpu_power_w / cpu_max_power * 100)
                     cpu_peak_power = max(cpu_peak_power, cpu_power_w)
                     avg_cpu_power_list.append(cpu_power_w)
                     avg_cpu_power = get_avg(avg_cpu_power_list)
@@ -387,10 +417,7 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     )
                     cpu_power_chart.append(cpu_power_percent)
 
-                    gpu_power_percent = (
-                        cpu_metrics_dict["gpu_W"] / args.interval / gpu_max_power * 100
-                    )
-                    gpu_power_w = cpu_metrics_dict["gpu_W"] / args.interval
+                    gpu_power_percent = int(gpu_power_w / gpu_max_power * 100)
                     # Some powermetrics versions omit GPU energy in the processor sampler.
                     # If we have no rail reading, estimate power from utilization so the chart
                     # still shows activity.

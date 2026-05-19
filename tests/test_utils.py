@@ -123,9 +123,10 @@ class TestParsePowermetrics(unittest.TestCase):
 
                 assert result is not None
                 assert isinstance(result, tuple)
-                assert len(result) == 5
+                assert len(result) == 6
 
-                cpu_metrics, gpu_metrics, thermal, bandwidth, timestamp = result
+                cpu_metrics, gpu_metrics, thermal, bandwidth, timestamp, extended = result
+                assert extended == {}
                 assert thermal == "Nominal"
                 assert timestamp == 1234567890
                 assert cpu_metrics is not None
@@ -195,7 +196,7 @@ class TestParsePowermetrics(unittest.TestCase):
                 result = parse_powermetrics(path=tf.name, timecode="")
 
                 assert result is not None
-                _, _, thermal, _, timestamp = result
+                _, _, thermal, _, timestamp, _extended = result
                 assert timestamp == 2000
                 assert thermal == "Moderate"
             finally:
@@ -645,6 +646,7 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         assert "powermetrics" in call_args
         assert "--samplers" in call_args
         assert "cpu_power,gpu_power,thermal" in call_args
+        assert "--handle-invalid-values" in call_args
 
     @patch("glob.glob")
     @patch("pathlib.Path.unlink")
@@ -691,6 +693,24 @@ class TestRunPowermetricsProcess(unittest.TestCase):
 
         call_args = mock_popen.call_args[0][0]
         assert "5000" in call_args
+
+    @patch("glob.glob")
+    @patch("pathlib.Path.unlink")
+    @patch("subprocess.Popen")
+    def test_run_powermetrics_process_extended(
+        self, mock_popen: MagicMock, mock_unlink: MagicMock, mock_glob: MagicMock
+    ) -> None:
+        """Extended mode adds optional powermetrics samplers."""
+        from asitop.utils import run_powermetrics_process
+
+        mock_glob.return_value = []
+        mock_popen.return_value = MagicMock()
+
+        run_powermetrics_process(timecode="123", extended=True)
+
+        call_args = mock_popen.call_args[0][0]
+        samplers = call_args[call_args.index("--samplers") + 1]
+        assert "sfi,battery,network,disk" in samplers
 
 
 class TestParsePowermetricsErrors(unittest.TestCase):
@@ -784,7 +804,7 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
                 assert result is not None
                 assert isinstance(result, tuple)
-                _, _, thermal, _, timestamp = result
+                _, _, thermal, _, timestamp, _extended = result
                 assert timestamp == 9999
                 assert thermal == "Heavy"
             finally:

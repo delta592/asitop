@@ -516,6 +516,90 @@ class TestParseCPUMetricsEdgeCases(unittest.TestCase):
         assert result["P-Cluster_freq_Mhz"] == 3100
 
 
+class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
+    """Tests for macOS 15+/26.x powermetrics fields."""
+
+    def test_parse_cpu_metrics_instant_power(self) -> None:
+        """Prefer cpu_power/gpu_power/ane_power mW rails when present."""
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "elapsed_ns": 500_000_000,
+            "processor": {
+                "clusters": [
+                    {"name": "E-Cluster", "freq_hz": 2000000000, "idle_ratio": 0.5, "cpus": []}
+                ],
+                "cpu_power": 10000,
+                "cpu_energy": 5000,
+                "gpu_power": 8000,
+                "gpu_energy": 4000,
+                "ane_power": 2000,
+                "ane_energy": 1000,
+                "combined_power": 23000,
+            },
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        assert result["_instant_power"] is True
+        assert math.isclose(result["cpu_W"], 10.0)
+        assert math.isclose(result["gpu_W"], 8.0)
+        assert math.isclose(result["ane_W"], 2.0)
+        assert math.isclose(result["package_W"], 23.0)
+
+    def test_parse_cpu_metrics_cluster_dvfm_freq(self) -> None:
+        """Derive cluster frequency from DVFM when freq_hz is zero."""
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {
+                        "name": "P-Cluster",
+                        "freq_hz": 0,
+                        "idle_ratio": 0.5,
+                        "dvfm_states": [
+                            {"freq": 1000, "used_ratio": 0.25},
+                            {"freq": 3000, "used_ratio": 0.75},
+                        ],
+                        "cpus": [],
+                    }
+                ],
+                "ane_energy": 0,
+                "cpu_energy": 0,
+                "gpu_energy": 0,
+                "combined_power": 0,
+            }
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        assert result["P-Cluster_freq_Mhz"] == 2500
+
+    def test_parse_ane_metrics_block(self) -> None:
+        """Parse ANE frequency and utilization from an ANE block."""
+        from asitop.parsers import parse_ane_metrics
+
+        mock_data: dict[str, Any] = {
+            "ane": {"freq_hz": 1200, "idle_ratio": 0.25},
+        }
+        result = parse_ane_metrics(mock_data)
+
+        assert result["ane_freq_MHz"] == 1200
+        assert result["ane_active"] == 75
+
+    def test_format_extended_status(self) -> None:
+        """Format extended sampler fields for the UI title."""
+        from asitop.parsers import format_extended_status
+
+        status = format_extended_status(
+            {
+                "cpu_power_zones_engaged": 0.5,
+                "network": {"rx_mbps": 12.5, "tx_mbps": 3.2},
+            }
+        )
+        assert "zones:50%" in status
+        assert "net" in status
+
+
 class TestParseBandwidthMetricsExtended(unittest.TestCase):
     """Extended test cases for parse_bandwidth_metrics function."""
 
