@@ -23,7 +23,7 @@ class GpuMetricsOut(TypedDict):
 
 
 def _freq_mhz_from_hz_and_dvfm(
-    raw_freq_hz: float | int | None,
+    raw_freq_hz: float | None,
     dvfm_states: list[dict[str, Any]] | None,
 ) -> int:
     """Normalize cluster/GPU frequency to MHz; derive from DVFM when freq_hz is zero."""
@@ -51,8 +51,8 @@ def _freq_mhz_from_hz_and_dvfm(
 
 def _rail_watts(
     *,
-    power_mw: float | int | None,
-    energy_mj: float | int | None,
+    power_mw: float | None,
+    energy_mj: float | None,
     elapsed_s: float,
 ) -> float:
     """Return average rail power in watts for the sample window."""

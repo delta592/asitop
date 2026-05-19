@@ -218,9 +218,9 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
     cpu_max_power = soc_info_dict["cpu_max_power"]
     gpu_max_power = soc_info_dict["gpu_max_power"]
 
-    cpu_peak_power = 0
-    gpu_peak_power = 0
-    package_peak_power = 0
+    cpu_peak_power = 0.0
+    gpu_peak_power = 0.0
+    package_peak_power = 0.0
     last_gpu_freq_mhz: int | None = None
 
     print("\n[2/3] Starting powermetrics process\n")
