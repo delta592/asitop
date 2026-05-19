@@ -32,11 +32,11 @@ test = [
     "pytest-cov==7.1.0",
     "pytest-mock==3.15.1",
     "coverage==7.14.0",
-    "ruff==0.15.12",
-    "black==26.3.1",
-    "mypy[native-parser]==2.0.0",
+    "ruff==0.15.13",
+    "black==26.5.0",
+    "mypy[native-parser]==2.1.0",
     "pyright==1.1.409",
-    "types-psutil==7.2.2.20260508",
+    "types-psutil==7.2.2.20260518",
 ]
 
 [project.scripts]
