@@ -1,6 +1,5 @@
 import argparse
 from collections import deque
-import contextlib
 import math
 import select
 import subprocess
@@ -8,11 +7,13 @@ import sys
 import termios
 import time
 import tty
+from types import SimpleNamespace
 
 from dashing import HChart, HGauge, HSplit, VGauge, VSplit
 
 from .parsers import CPUMetrics, GpuMetricsOut, display_power_watts, format_extended_status
 from .utils import (
+    cleanup_powermetrics,
     clear_console,
     get_ram_metrics_dict,
     get_soc_info,
@@ -206,7 +207,6 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
     )
 
     usage_gauges = ui.items[0]
-    # bw_gauges = memory_gauges.items[1]
 
     cpu_title = (
         f"{soc_info_dict['name']} "
@@ -255,7 +255,6 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
 
     clear_console()
 
-    count = 0
     # Restart powermetrics periodically to prevent unbounded file growth
     # If user hasn't set max_count, default to restarting every DEFAULT_RESTART_INTERVAL iterations
     restart_interval = args.max_count if args.max_count > 0 else DEFAULT_RESTART_INTERVAL
@@ -265,26 +264,37 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
     keyboard_enabled = sys.stdin.isatty()
     if keyboard_enabled:
         old_settings = termios.tcgetattr(sys.stdin)
-    try:
-        if keyboard_enabled:
-            tty.setcbreak(sys.stdin.fileno())
+
+    loop = SimpleNamespace(
+        count=0,
+        timecode=timecode,
+        powermetrics_process=powermetrics_process,
+        last_timestamp=last_timestamp,
+        last_gpu_freq_mhz=last_gpu_freq_mhz,
+        cpu_peak_power=cpu_peak_power,
+        gpu_peak_power=gpu_peak_power,
+        package_peak_power=package_peak_power,
+    )
+
+    def run_display_loop() -> tuple[subprocess.Popen[bytes], str]:
+        """Run the display refresh loop until quit."""
         while True:
             # Check if 'q' key was pressed (only when keyboard is enabled)
             if keyboard_enabled and check_for_quit_key():
                 print("\nExiting asitop...")
                 break
-            if count >= restart_interval:
-                count = 0
-                powermetrics_process.terminate()
-                timecode = str(int(time.time()))
-                powermetrics_process = run_powermetrics_process(
-                    timecode,
+            if loop.count >= restart_interval:
+                loop.count = 0
+                loop.powermetrics_process.terminate()
+                loop.timecode = str(int(time.time()))
+                loop.powermetrics_process = run_powermetrics_process(
+                    loop.timecode,
                     interval=max(MIN_SAMPLE_INTERVAL_MS, int(args.interval * 1000)),
                     nice=args.nice,
                     extended=args.extended,
                 )
-            count += 1
-            ready_result = parse_powermetrics(timecode=timecode)
+            loop.count += 1
+            ready_result = parse_powermetrics(timecode=loop.timecode)
             if ready_result is not False:
                 ready = ready_result
                 (
@@ -296,8 +306,8 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     extended_metrics,
                 ) = ready
 
-                if timestamp > last_timestamp:
-                    last_timestamp = timestamp
+                if timestamp > loop.last_timestamp:
+                    loop.last_timestamp = timestamp
                     instant_power = bool(cpu_metrics_dict.get("_instant_power"))
 
                     if thermal_pressure == THERMAL_PRESSURE_NOMINAL:
@@ -340,13 +350,18 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                             core_gauges[gauge_idx].value = int(cpu_metrics_dict[core_key])
 
                     gpu_power_w = display_power_watts(
-                        cpu_metrics_dict["gpu_W"], instant_power, args.interval
+                        cpu_metrics_dict["gpu_W"],
+                        instant=instant_power,
+                        interval=args.interval,
                     )
                     gpu_util_percent, gpu_freq_mhz = calculate_gpu_usage(
-                        gpu_metrics_dict, gpu_power_w, gpu_max_power, last_gpu_freq_mhz
+                        gpu_metrics_dict,
+                        gpu_power_w,
+                        gpu_max_power,
+                        loop.last_gpu_freq_mhz,
                     )
-                    last_gpu_freq_mhz = (
-                        gpu_freq_mhz if gpu_freq_mhz is not None else last_gpu_freq_mhz
+                    loop.last_gpu_freq_mhz = (
+                        gpu_freq_mhz if gpu_freq_mhz is not None else loop.last_gpu_freq_mhz
                     )
 
                     gpu_freq_display = gpu_freq_mhz if gpu_freq_mhz is not None else "N/A"
@@ -354,7 +369,9 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     gpu_gauge.value = gpu_util_percent
 
                     ane_power = display_power_watts(
-                        cpu_metrics_dict["ane_W"], instant_power, args.interval
+                        cpu_metrics_dict["ane_W"],
+                        instant=instant_power,
+                        interval=args.interval,
                     )
                     ane_active = cpu_metrics_dict.get("ane_active")
                     if ane_active is not None and ane_active > 0:
@@ -390,14 +407,16 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     ram_gauge.value = int(ram_metrics_dict["free_percent"])
 
                     package_power_w = display_power_watts(
-                        cpu_metrics_dict["package_W"], instant_power, args.interval
+                        cpu_metrics_dict["package_W"],
+                        instant=instant_power,
+                        interval=args.interval,
                     )
-                    package_peak_power = max(package_peak_power, package_power_w)
+                    loop.package_peak_power = max(loop.package_peak_power, package_power_w)
                     avg_package_power_list.append(package_power_w)
                     avg_package_power = get_avg(avg_package_power_list)
                     power_title = (
                         f"CPU+GPU+ANE Power: {package_power_w:.2f}W "
-                        f"(avg: {avg_package_power:.2f}W peak: {package_peak_power:.2f}W) "
+                        f"(avg: {avg_package_power:.2f}W peak: {loop.package_peak_power:.2f}W) "
                         f"throttle: {thermal_throttle}"
                     )
                     if extended_status := format_extended_status(extended_metrics):
@@ -405,15 +424,17 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     power_charts.title = power_title
 
                     cpu_power_w = display_power_watts(
-                        cpu_metrics_dict["cpu_W"], instant_power, args.interval
+                        cpu_metrics_dict["cpu_W"],
+                        instant=instant_power,
+                        interval=args.interval,
                     )
                     cpu_power_percent = int(cpu_power_w / cpu_max_power * 100)
-                    cpu_peak_power = max(cpu_peak_power, cpu_power_w)
+                    loop.cpu_peak_power = max(loop.cpu_peak_power, cpu_power_w)
                     avg_cpu_power_list.append(cpu_power_w)
                     avg_cpu_power = get_avg(avg_cpu_power_list)
                     cpu_power_chart.title = (
                         f"CPU: {cpu_power_w:.2f}W "
-                        f"(avg: {avg_cpu_power:.2f}W peak: {cpu_peak_power:.2f}W)"
+                        f"(avg: {avg_cpu_power:.2f}W peak: {loop.cpu_peak_power:.2f}W)"
                     )
                     cpu_power_chart.append(cpu_power_percent)
 
@@ -428,19 +449,24 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     if 0 < gpu_power_percent < 1:
                         gpu_power_percent = 1
                     gpu_power_percent = min(100, max(0, math.ceil(gpu_power_percent)))
-                    gpu_peak_power = max(gpu_peak_power, gpu_power_w)
+                    loop.gpu_peak_power = max(loop.gpu_peak_power, gpu_power_w)
                     avg_gpu_power_list.append(gpu_power_w)
                     avg_gpu_power = get_avg(avg_gpu_power_list)
                     gpu_power_chart.title = (
                         f"GPU: {gpu_power_w:.2f}W "
-                        f"(avg: {avg_gpu_power:.2f}W peak: {gpu_peak_power:.2f}W)"
+                        f"(avg: {avg_gpu_power:.2f}W peak: {loop.gpu_peak_power:.2f}W)"
                     )
                     gpu_power_chart.append(gpu_power_percent)
 
             # Refresh UI and wait for the next interval (match powermetrics cadence)
             ui.display()
             time.sleep(max(0.05, args.interval))
+        return loop.powermetrics_process, loop.timecode
 
+    try:
+        if keyboard_enabled:
+            tty.setcbreak(sys.stdin.fileno())
+        powermetrics_process, timecode = run_display_loop()
     except KeyboardInterrupt:
         print("Stopping...")
     finally:
@@ -454,45 +480,5 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
 
 if __name__ == "__main__":
     powermetrics_process, timecode = main()
-    # Clean up the powermetrics process
-    exit_code = 0
-    try:
-        if powermetrics_process.poll() is None:  # Process is still running
-            # Terminate the process
-            powermetrics_process.terminate()
-
-            try:
-                powermetrics_process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                # Process didn't terminate gracefully, force kill it
-                powermetrics_process.kill()
-                with contextlib.suppress(subprocess.TimeoutExpired):
-                    powermetrics_process.wait(timeout=2)
-
-        # Additional cleanup: kill any orphaned powermetrics processes
-        # This handles the sudo process chain that may not terminate with the parent
-        # Use sudo pkill to ensure we have permissions to kill powermetrics
-        with contextlib.suppress(Exception):
-            subprocess.run(
-                ["sudo", "pkill", "-f", "^powermetrics.*asitop_powermetrics"],
-                timeout=2,
-                check=False,
-                capture_output=True,
-            )
-
-        # Clean up the temporary powermetrics output file
-        import pathlib
-
-        from .utils import get_powermetrics_path
-
-        temp_file = pathlib.Path(get_powermetrics_path(timecode))
-        with contextlib.suppress(FileNotFoundError, PermissionError):
-            temp_file.unlink()
-    except Exception:
-        # Final fallback: try to kill forcefully and ignore errors
-        with contextlib.suppress(Exception):
-            powermetrics_process.kill()
-            with contextlib.suppress(subprocess.TimeoutExpired):
-                powermetrics_process.wait(timeout=1)
-
-    sys.exit(exit_code)
+    cleanup_powermetrics(powermetrics_process, timecode)
+    sys.exit(0)

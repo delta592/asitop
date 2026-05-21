@@ -141,16 +141,11 @@ ignore = [
     "SIM108",  # Use ternary operator - can reduce readability
     "COM812",  # Trailing comma missing - conflicts with formatter
     "ISC001",  # Implicit string concatenation - conflicts with formatter
-    "ERA001",  # Commented-out code - sometimes useful during development
 
     # Import patterns
-    "F403",    # Star imports - used intentionally in utils
-    "F405",    # May be undefined from star imports
     "TID252",  # Relative imports - allow for package structure
 
     # Controversial or overly strict rules
-    "FBT001",  # Boolean positional arg - acceptable in CLI tools
-    "FBT002",  # Boolean default arg - acceptable in CLI tools
     "TD002",   # Missing TODO author - not required
     "TD003",   # Missing TODO link - not required
     "FIX002",  # TODO comments - allowed during development
@@ -167,20 +162,16 @@ ignore = [
     "S607",    # Partial executable path - acceptable for system tools
     "S108",    # Hardcoded temp directory - standard for this tool
     "S112",    # try-except-continue - acceptable for parsing loops
-    "BLE001",  # Blind except Exception - acceptable for cleanup handlers
 
     # Exception handling patterns
     "TRY300",  # Consider moving to else block - style preference
 
-    # Path operations
-    "PTH207",  # Use Path.glob - glob.glob is acceptable
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # __init__.py files
 "__init__.py" = [
     "F401",    # Unused import - expected in __init__.py
-    "F403",    # Star import - expected in __init__.py
     "D104",    # Missing docstring in public package
 ]
 

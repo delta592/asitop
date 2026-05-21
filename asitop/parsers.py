@@ -65,7 +65,7 @@ def _rail_watts(
     return energy / 1000.0
 
 
-def display_power_watts(stored_value: float, instant: bool, interval: float) -> float:
+def display_power_watts(stored_value: float, *, instant: bool, interval: float) -> float:
     """Convert a stored rail value to watts for display."""
     if instant:
         return stored_value

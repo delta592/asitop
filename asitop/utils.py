@@ -1,10 +1,11 @@
-import glob
+import contextlib
 import pathlib
 import plistlib
 import subprocess
 from subprocess import PIPE
 import tempfile
 from typing import Any, Literal
+from xml.parsers.expat import ExpatError
 
 import psutil
 
@@ -126,6 +127,58 @@ SOC_SPECS = {
 }
 
 
+def _read_powermetrics_tail(file_path: str) -> bytes | None:
+    """Read the tail of a powermetrics output file."""
+    try:
+        with pathlib.Path(file_path).open("rb") as fp:
+            fp.seek(0, 2)
+            size = fp.tell()
+            chunk_size = min(500000, size)
+            fp.seek(max(0, size - chunk_size))
+            return fp.read()
+    except OSError:
+        return None
+
+
+def _metrics_from_plist(
+    powermetrics_parse: dict[str, Any],
+) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int, dict[str, Any]]:
+    """Extract metrics from a parsed powermetrics plist dict."""
+    thermal_pressure = parse_thermal_pressure(powermetrics_parse)
+    cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
+    gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
+    extended_metrics = parse_extended_metrics(powermetrics_parse)
+    timestamp = powermetrics_parse["timestamp"]
+    return (
+        cpu_metrics_dict,
+        gpu_metrics_dict,
+        thermal_pressure,
+        None,
+        timestamp,
+        extended_metrics,
+    )
+
+
+def _parse_powermetrics_part(
+    part: bytes,
+) -> tuple[CPUMetrics, GpuMetricsOut, str, None, int, dict[str, Any]] | None:
+    """Parse a single null-separated plist slice from powermetrics output."""
+    try:
+        powermetrics_parse = plistlib.loads(part)
+        return _metrics_from_plist(powermetrics_parse)
+    except (
+        plistlib.InvalidFileException,
+        ExpatError,
+        ValueError,
+        TypeError,
+        KeyError,
+        IndexError,
+        OSError,
+        OverflowError,
+    ):
+        return None
+
+
 def get_powermetrics_path(timecode: str = "0") -> str:
     """Get the path for powermetrics output file.
 
@@ -157,39 +210,65 @@ def parse_powermetrics(
         timestamp, extended_metrics) or False if parsing fails
     """
     file_path = path if path is not None else get_powermetrics_path(timecode)
-    try:
-        with pathlib.Path(file_path).open("rb") as fp:
-            fp.seek(0, 2)
-            size = fp.tell()
-            # Read only the tail of the file to avoid unbounded growth.
-            # Use a generous window to avoid cutting a plist in half.
-            chunk_size = min(500000, size)
-            fp.seek(max(0, size - chunk_size))
-            data = fp.read()
+    data = _read_powermetrics_tail(file_path)
+    if data is None:
+        return False
 
-        parts = [p for p in data.split(b"\x00") if p]
-        for part in reversed(parts):
-            try:
-                powermetrics_parse = plistlib.loads(part)
-                thermal_pressure = parse_thermal_pressure(powermetrics_parse)
-                cpu_metrics_dict = parse_cpu_metrics(powermetrics_parse)
-                gpu_metrics_dict = parse_gpu_metrics(powermetrics_parse)
-                bandwidth_metrics = None
-                extended_metrics = parse_extended_metrics(powermetrics_parse)
-                timestamp = powermetrics_parse["timestamp"]
-                return (
-                    cpu_metrics_dict,
-                    gpu_metrics_dict,
-                    thermal_pressure,
-                    bandwidth_metrics,
-                    timestamp,
-                    extended_metrics,
-                )
-            except Exception:
-                continue
-        return False
+    parts = [p for p in data.split(b"\x00") if p]
+    for part in reversed(parts):
+        parsed = _parse_powermetrics_part(part)
+        if parsed is not None:
+            return parsed
+    return False
+
+
+def _terminate_powermetrics_process(process: subprocess.Popen[bytes]) -> None:
+    """Terminate a running powermetrics subprocess."""
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=2)
+
+
+def _kill_orphaned_powermetrics() -> None:
+    """Kill orphaned powermetrics processes started by asitop."""
+    with contextlib.suppress(Exception):
+        subprocess.run(
+            ["sudo", "pkill", "-f", "^powermetrics.*asitop_powermetrics"],
+            timeout=2,
+            check=False,
+            capture_output=True,
+        )
+
+
+def _remove_powermetrics_file(timecode: str) -> None:
+    """Remove the temporary powermetrics output file."""
+    temp_file = pathlib.Path(get_powermetrics_path(timecode))
+    with contextlib.suppress(FileNotFoundError, PermissionError):
+        temp_file.unlink()
+
+
+def _force_kill_powermetrics(process: subprocess.Popen[bytes]) -> None:
+    """Force-kill powermetrics when graceful cleanup fails."""
+    with contextlib.suppress(Exception):
+        process.kill()
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=1)
+
+
+def cleanup_powermetrics(powermetrics_process: subprocess.Popen[bytes], timecode: str) -> None:
+    """Stop powermetrics and remove temporary output files."""
+    try:
+        _terminate_powermetrics_process(powermetrics_process)
+        _kill_orphaned_powermetrics()
+        _remove_powermetrics_file(timecode)
     except OSError:
-        return False
+        _force_kill_powermetrics(powermetrics_process)
 
 
 def clear_console() -> None:
@@ -228,9 +307,9 @@ def run_powermetrics_process(
         Running Popen process object
     """
     # Clean up old powermetrics files
-    tmp_dir = tempfile.gettempdir()
-    for tmpf in glob.glob(str(pathlib.Path(tmp_dir) / "asitop_powermetrics*")):
-        pathlib.Path(tmpf).unlink(missing_ok=True)
+    tmp_dir = pathlib.Path(tempfile.gettempdir())
+    for tmpf in tmp_dir.glob("asitop_powermetrics*"):
+        tmpf.unlink(missing_ok=True)
 
     output_file = get_powermetrics_path(timecode)
 

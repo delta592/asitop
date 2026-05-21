@@ -5,6 +5,7 @@ This module tests utility functions including powermetrics parsing,
 RAM metrics collection, SOC information gathering, and file operations.
 """
 
+from contextlib import contextmanager
 import math
 import pathlib
 import plistlib
@@ -12,6 +13,16 @@ import tempfile
 from typing import Any
 import unittest
 from unittest.mock import MagicMock, patch
+
+
+@contextmanager
+def temp_binary_file(suffix: str = "_test"):
+    """Create a temporary binary file and remove it after the test."""
+    with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=suffix) as tf:
+        try:
+            yield tf
+        finally:
+            pathlib.Path(tf.name).unlink()
 
 
 class TestConvertToGB(unittest.TestCase):
@@ -113,26 +124,23 @@ class TestParsePowermetrics(unittest.TestCase):
             },
         }
 
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
-            try:
-                plistlib.dump(mock_plist_data, tf)
-                tf.flush()
+        with temp_binary_file() as tf:
+            plistlib.dump(mock_plist_data, tf)
+            tf.flush()
 
-                # Parse the file directly using the full path as base_path and empty timecode
-                result = parse_powermetrics(path=tf.name, timecode="")
+            # Parse the file directly using the full path as base_path and empty timecode
+            result = parse_powermetrics(path=tf.name, timecode="")
 
-                assert result is not None
-                assert isinstance(result, tuple)
-                assert len(result) == 6
+            assert result is not None
+            assert isinstance(result, tuple)
+            assert len(result) == 6
 
-                cpu_metrics, gpu_metrics, thermal, bandwidth, timestamp, extended = result
-                assert extended == {}
-                assert thermal == "Nominal"
-                assert timestamp == 1234567890
-                assert cpu_metrics is not None
-                assert gpu_metrics is not None
-            finally:
-                pathlib.Path(tf.name).unlink()
+            cpu_metrics, gpu_metrics, thermal, bandwidth, timestamp, extended = result
+            assert extended == {}
+            assert thermal == "Nominal"
+            assert timestamp == 1234567890
+            assert cpu_metrics is not None
+            assert gpu_metrics is not None
 
     def test_parse_powermetrics_file_not_found(self) -> None:
         """
@@ -185,22 +193,19 @@ class TestParsePowermetrics(unittest.TestCase):
             "gpu": {"freq_hz": 1300000000, "idle_ratio": 0.2},
         }
 
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
-            try:
-                plistlib.dump(mock_plist_1, tf)
-                tf.write(b"\x00")
-                plistlib.dump(mock_plist_2, tf)
-                tf.flush()
+        with temp_binary_file() as tf:
+            plistlib.dump(mock_plist_1, tf)
+            tf.write(b"\x00")
+            plistlib.dump(mock_plist_2, tf)
+            tf.flush()
 
-                # Parse the file directly using the full path as base_path and empty timecode
-                result = parse_powermetrics(path=tf.name, timecode="")
+            # Parse the file directly using the full path as base_path and empty timecode
+            result = parse_powermetrics(path=tf.name, timecode="")
 
-                assert result is not None
-                _, _, thermal, _, timestamp, _extended = result
-                assert timestamp == 2000
-                assert thermal == "Moderate"
-            finally:
-                pathlib.Path(tf.name).unlink()
+            assert result is not None
+            _, _, thermal, _, timestamp, _extended = result
+            assert timestamp == 2000
+            assert thermal == "Moderate"
 
 
 class TestGetRamMetricsDict(unittest.TestCase):
@@ -620,7 +625,7 @@ class TestGetSOCInfo(unittest.TestCase):
 class TestRunPowermetricsProcess(unittest.TestCase):
     """Test cases for run_powermetrics_process function."""
 
-    @patch("glob.glob")
+    @patch("pathlib.Path.glob")
     @patch("os.remove")
     @patch("subprocess.Popen")
     def test_run_powermetrics_process_basic(
@@ -648,7 +653,7 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         assert "cpu_power,gpu_power,thermal" in call_args
         assert "--handle-invalid-values" in call_args
 
-    @patch("glob.glob")
+    @patch("pathlib.Path.glob")
     @patch("pathlib.Path.unlink")
     @patch("subprocess.Popen")
     def test_run_powermetrics_process_cleanup(
@@ -662,7 +667,10 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         """
         from asitop.utils import run_powermetrics_process
 
-        old_files = ["/tmp/asitop_powermetrics123", "/tmp/asitop_powermetrics456"]
+        old_files = [
+            pathlib.Path("/tmp/asitop_powermetrics123"),
+            pathlib.Path("/tmp/asitop_powermetrics456"),
+        ]
         mock_glob.return_value = old_files
         mock_popen.return_value = MagicMock()
 
@@ -672,7 +680,7 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         # Verify unlink was called with missing_ok=True
         mock_unlink.assert_called_with(missing_ok=True)
 
-    @patch("glob.glob")
+    @patch("pathlib.Path.glob")
     @patch("os.remove")
     @patch("subprocess.Popen")
     def test_run_powermetrics_process_custom_interval(
@@ -694,7 +702,7 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         call_args = mock_popen.call_args[0][0]
         assert "5000" in call_args
 
-    @patch("glob.glob")
+    @patch("pathlib.Path.glob")
     @patch("pathlib.Path.unlink")
     @patch("subprocess.Popen")
     def test_run_powermetrics_process_extended(
@@ -723,24 +731,19 @@ class TestParsePowermetricsErrors(unittest.TestCase):
         Ensures function returns False when all plist entries
         in the file are corrupted or invalid.
         """
-        import tempfile
-
         from asitop.utils import parse_powermetrics
 
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
-            try:
-                # Write invalid plist data
-                tf.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
-                tf.write(b"<plist>\n")
-                tf.write(b"<dict>\n")
-                tf.write(b"CORRUPTED DATA HERE\n")
-                tf.flush()
+        with temp_binary_file() as tf:
+            # Write invalid plist data
+            tf.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
+            tf.write(b"<plist>\n")
+            tf.write(b"<dict>\n")
+            tf.write(b"CORRUPTED DATA HERE\n")
+            tf.flush()
 
-                result = parse_powermetrics(path=tf.name, timecode="")
+            result = parse_powermetrics(path=tf.name, timecode="")
 
-                assert not result
-            finally:
-                pathlib.Path(tf.name).unlink()
+            assert not result
 
     def test_parse_powermetrics_empty_parts(self) -> None:
         """
@@ -748,21 +751,16 @@ class TestParsePowermetricsErrors(unittest.TestCase):
 
         Edge case: File has null bytes but no valid plist data.
         """
-        import tempfile
-
         from asitop.utils import parse_powermetrics
 
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
-            try:
-                # Write only null bytes
-                tf.write(b"\x00\x00\x00\x00")
-                tf.flush()
+        with temp_binary_file() as tf:
+            # Write only null bytes
+            tf.write(b"\x00\x00\x00\x00")
+            tf.flush()
 
-                result = parse_powermetrics(path=tf.name, timecode="")
+            result = parse_powermetrics(path=tf.name, timecode="")
 
-                assert not result
-            finally:
-                pathlib.Path(tf.name).unlink()
+            assert not result
 
     def test_parse_powermetrics_partial_valid_data(self) -> None:
         """
@@ -772,7 +770,6 @@ class TestParsePowermetricsErrors(unittest.TestCase):
         parses the first valid one it finds.
         """
         import plistlib
-        import tempfile
 
         from asitop.utils import parse_powermetrics
 
@@ -791,24 +788,21 @@ class TestParsePowermetricsErrors(unittest.TestCase):
             "gpu": {"freq_hz": 1400000000, "idle_ratio": 0.1},
         }
 
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix="_test") as tf:
-            try:
-                # Write corrupted data first
-                tf.write(b"CORRUPTED")
-                tf.write(b"\x00")
-                # Then write valid plist
-                plistlib.dump(mock_plist_data, tf)
-                tf.flush()
+        with temp_binary_file() as tf:
+            # Write corrupted data first
+            tf.write(b"CORRUPTED")
+            tf.write(b"\x00")
+            # Then write valid plist
+            plistlib.dump(mock_plist_data, tf)
+            tf.flush()
 
-                result = parse_powermetrics(path=tf.name, timecode="")
+            result = parse_powermetrics(path=tf.name, timecode="")
 
-                assert result is not None
-                assert isinstance(result, tuple)
-                _, _, thermal, _, timestamp, _extended = result
-                assert timestamp == 9999
-                assert thermal == "Heavy"
-            finally:
-                pathlib.Path(tf.name).unlink()
+            assert result is not None
+            assert isinstance(result, tuple)
+            _, _, thermal, _, timestamp, _extended = result
+            assert timestamp == 9999
+            assert thermal == "Heavy"
 
 
 if __name__ == "__main__":
