@@ -9,6 +9,7 @@ from contextlib import contextmanager
 import math
 import pathlib
 import plistlib
+import subprocess
 import tempfile
 from typing import Any
 import unittest
@@ -358,6 +359,19 @@ class TestGetCoreCounts(unittest.TestCase):
         assert result["hw.perflevel1.logicalcpu"] == 2
 
     @patch("subprocess.run")
+    def test_get_core_counts_invalid_value(self, mock_run: MagicMock) -> None:
+        """Skip sysctl lines whose values cannot be parsed as integers."""
+        from asitop.utils import get_core_counts
+
+        mock_output = "hw.perflevel0.logicalcpu: not-a-number\nhw.perflevel1.logicalcpu: 4\n"
+        mock_run.return_value.stdout = mock_output
+
+        result = get_core_counts()
+
+        assert "hw.perflevel0.logicalcpu" not in result
+        assert result["hw.perflevel1.logicalcpu"] == 4
+
+    @patch("subprocess.run")
     def test_get_core_counts_m1_ultra(self, mock_run: MagicMock) -> None:
         """
         Test core count extraction for M1 Ultra.
@@ -412,6 +426,15 @@ class TestGetGPUCores(unittest.TestCase):
         result = get_gpu_cores()
 
         assert result == 32
+
+    @patch("subprocess.run", side_effect=OSError("system_profiler unavailable"))
+    def test_get_gpu_cores_subprocess_error(self, mock_run: MagicMock) -> None:
+        """Return '?' when system_profiler cannot be invoked."""
+        from asitop.utils import get_gpu_cores
+
+        result = get_gpu_cores()
+
+        assert result == "?"
 
     @patch("subprocess.run")
     def test_get_gpu_cores_parse_error(self, mock_run: MagicMock) -> None:
@@ -598,6 +621,29 @@ class TestGetSOCInfo(unittest.TestCase):
     @patch("asitop.utils.get_gpu_cores")
     @patch("asitop.utils.get_core_counts")
     @patch("asitop.utils.get_cpu_info")
+    def test_get_soc_info_invalid_core_count(
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
+    ) -> None:
+        """Default core_count to 0 when sysctl returns a non-integer."""
+        from asitop.utils import get_soc_info
+
+        mock_cpu_info.return_value = {
+            "machdep.cpu.brand_string": "Apple M1",
+            "machdep.cpu.core_count": "unknown",
+        }
+        mock_core_counts.return_value = {
+            "hw.perflevel0.logicalcpu": 4,
+            "hw.perflevel1.logicalcpu": 4,
+        }
+        mock_gpu_cores.return_value = 8
+
+        result = get_soc_info()
+
+        assert result["core_count"] == 0
+
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
     def test_get_soc_info_missing_core_counts(
         self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
     ) -> None:
@@ -719,6 +765,83 @@ class TestRunPowermetricsProcess(unittest.TestCase):
         call_args = mock_popen.call_args[0][0]
         samplers = call_args[call_args.index("--samplers") + 1]
         assert "sfi,battery,network,disk" in samplers
+
+
+class TestCleanupPowermetrics(unittest.TestCase):
+    """Test cases for powermetrics cleanup via the public API."""
+
+    @patch("asitop.utils.get_powermetrics_path")
+    @patch("asitop.utils.subprocess.run")
+    def test_cleanup_powermetrics_graceful(self, mock_run: MagicMock, mock_path: MagicMock) -> None:
+        """cleanup_powermetrics terminates the process and removes temp files."""
+        from asitop.utils import cleanup_powermetrics
+
+        process = MagicMock()
+        process.poll.return_value = None
+        process.wait.return_value = 0
+        mock_path.return_value = "/tmp/asitop_powermetrics123"
+        temp_file = MagicMock()
+
+        with patch("asitop.utils.pathlib.Path", return_value=temp_file):
+            cleanup_powermetrics(process, "abc123")
+
+        process.terminate.assert_called_once()
+        mock_run.assert_called_once()
+        temp_file.unlink.assert_called_once()
+
+    @patch("asitop.utils.get_powermetrics_path")
+    @patch("asitop.utils.subprocess.run")
+    def test_cleanup_powermetrics_already_stopped(
+        self, mock_run: MagicMock, mock_path: MagicMock
+    ) -> None:
+        """Skip terminate when the process has already exited."""
+        from asitop.utils import cleanup_powermetrics
+
+        process = MagicMock()
+        process.poll.return_value = 0
+        mock_path.return_value = "/tmp/asitop_powermetrics123"
+        temp_file = MagicMock()
+
+        with patch("asitop.utils.pathlib.Path", return_value=temp_file):
+            cleanup_powermetrics(process, "abc123")
+
+        process.terminate.assert_not_called()
+        temp_file.unlink.assert_called_once()
+
+    @patch("asitop.utils.get_powermetrics_path")
+    @patch("asitop.utils.subprocess.run")
+    def test_cleanup_powermetrics_timeout(self, mock_run: MagicMock, mock_path: MagicMock) -> None:
+        """Force-kill powermetrics when graceful termination times out."""
+        from asitop.utils import cleanup_powermetrics
+
+        process = MagicMock()
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired("powermetrics", 3), None]
+        mock_path.return_value = "/tmp/asitop_powermetrics123"
+        temp_file = MagicMock()
+
+        with patch("asitop.utils.pathlib.Path", return_value=temp_file):
+            cleanup_powermetrics(process, "abc123")
+
+        process.terminate.assert_called_once()
+        process.kill.assert_called_once()
+
+    @patch("asitop.utils.get_powermetrics_path")
+    @patch("asitop.utils.subprocess.run")
+    def test_cleanup_powermetrics_oserror_fallback(
+        self, mock_run: MagicMock, mock_path: MagicMock
+    ) -> None:
+        """Fall back to force-kill when cleanup raises OSError."""
+        from asitop.utils import cleanup_powermetrics
+
+        process = MagicMock()
+        process.poll.return_value = None
+        process.terminate.side_effect = OSError("permission denied")
+        mock_path.return_value = "/tmp/asitop_powermetrics123"
+
+        cleanup_powermetrics(process, "abc123")
+
+        process.kill.assert_called_once()
 
 
 class TestParsePowermetricsErrors(unittest.TestCase):

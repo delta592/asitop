@@ -599,6 +599,77 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         assert "zones:50%" in status
         assert "net" in status
 
+    def test_format_extended_status_all_fields(self) -> None:
+        """Format battery, disk, and SFI throttle fields."""
+        from asitop.parsers import format_extended_status
+
+        status = format_extended_status(
+            {
+                "sfi_throttle": {"class_a": True, "class_b": True},
+                "battery_discharge_mw": 8500,
+                "disk": {"read_mbps": 120.0, "write_mbps": 45.0},
+            }
+        )
+        assert "SFI:2" in status
+        assert "bat:8.5W" in status
+        assert "disk R120/W45MB/s" in status
+
+    def test_display_power_watts_zero_interval(self) -> None:
+        """Return stored value unchanged when interval is zero."""
+        from asitop.parsers import display_power_watts
+
+        assert math.isclose(display_power_watts(12.5, instant=False, interval=0), 12.5)
+
+    def test_parse_extended_metrics(self) -> None:
+        """Parse optional extended powermetrics samplers."""
+        from asitop.parsers import parse_extended_metrics
+
+        result = parse_extended_metrics(
+            {
+                "sfi": {"sfi_classes": {"gpu": True, "cpu": False}},
+                "processor": {"cpu_power_zones_engaged": 0.25},
+                "battery": {"discharge_rate_mw": 5000},
+                "network": {"ibyte_rate": 1_000_000, "obyte_rate": 500_000},
+                "disk": {"rbytes_per_s": 2_000_000, "wbytes_per_s": 1_000_000},
+            }
+        )
+
+        assert result["sfi_throttle"] == {"gpu": True}
+        assert math.isclose(result["cpu_power_zones_engaged"], 0.25)
+        assert result["battery_discharge_mw"] == 5000
+        assert math.isclose(result["network"]["rx_mbps"], 8.0)
+        assert math.isclose(result["network"]["tx_mbps"], 4.0)
+        assert math.isclose(result["disk"]["read_mbps"], 2.0)
+        assert math.isclose(result["disk"]["write_mbps"], 1.0)
+
+    def test_parse_ane_metrics_nested_and_invalid(self) -> None:
+        """Handle nested ANE blocks and invalid block types."""
+        from asitop.parsers import parse_ane_metrics
+
+        nested = parse_ane_metrics({"processor": {"ane": {"freq_hz": 900, "idle_ratio": 0.5}}})
+        assert nested["ane_freq_MHz"] == 900
+        assert nested["ane_active"] == 50
+
+        assert parse_ane_metrics({"ane": "invalid"}) == {}
+        assert parse_ane_metrics({"ane": []}) == {}
+
+    def test_parse_ane_metrics_list_blocks(self) -> None:
+        """Parse ANE metrics from a list of block dicts."""
+        from asitop.parsers import parse_ane_metrics
+
+        result = parse_ane_metrics(
+            {
+                "ane": [
+                    {"freq_hz": 800, "idle_ratio": 0.2},
+                    {"freq_hz": 1000, "idle_ratio": 0.4},
+                    "skip-me",
+                ]
+            }
+        )
+
+        assert result["ane_freq_MHz"] == 1000
+        assert result["ane_active"] == 70
+
 
 class TestParseBandwidthMetricsExtended(unittest.TestCase):
     """Extended test cases for parse_bandwidth_metrics function."""
