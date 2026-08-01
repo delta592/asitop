@@ -9,9 +9,8 @@ import time
 import tty
 from types import SimpleNamespace
 
-from dashing import HChart, HGauge, HSplit, VGauge, VSplit
-
 from .parsers import CPUMetrics, GpuMetricsOut, display_power_watts, format_extended_status
+from .tui import HChart, HGauge, HSplit, VGauge, VSplit
 from .utils import (
     cleanup_powermetrics,
     clear_console,

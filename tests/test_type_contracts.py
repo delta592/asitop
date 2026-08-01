@@ -1,4 +1,4 @@
-"""Test type contracts to ensure compatibility with typed libraries like dashing.
+"""Test type contracts to ensure compatibility with the asitop TUI widgets.
 
 These tests validate that return values match the expected types for library
 contracts, catching issues that static type checkers find but runtime tests
@@ -51,14 +51,14 @@ def get_sample_powermetrics_data() -> dict[str, Any]:
 
 
 class TestGaugeValueTypes:
-    """Test that all gauge values are properly typed as int for dashing.HGauge/VGauge."""
+    """Test that all gauge values are properly typed as int for HGauge/VGauge."""
 
     @patch("psutil.virtual_memory")
     @patch("psutil.swap_memory")
     def test_ram_gauge_value_is_int(self, mock_swap: MagicMock, mock_ram: MagicMock) -> None:
-        """RAM gauge values must be int for dashing.HGauge compatibility.
+        """RAM gauge values must be int for HGauge compatibility.
 
-        The dashing library's HGauge.value expects int, not float or None.
+        HGauge.value expects int, not float or None.
         This test ensures get_ram_metrics_dict() returns proper types.
         """
         from asitop.utils import get_ram_metrics_dict
@@ -120,7 +120,7 @@ class TestGaugeValueTypes:
         assert metrics["swap_free_percent"] == 0
 
     def test_cpu_gauge_values_are_int(self) -> None:
-        """CPU gauge values must be int for dashing.HGauge compatibility.
+        """CPU gauge values must be int for HGauge compatibility.
 
         parse_cpu_metrics() returns various *_active and *_freq_Mhz values that
         are assigned to HGauge.value. All must be int, not float.
@@ -153,7 +153,7 @@ class TestGaugeValueTypes:
             assert value >= 0, f"{key} frequency must be non-negative, got {value}"
 
     def test_gpu_gauge_values_are_int(self) -> None:
-        """GPU gauge values must be int for dashing.HGauge compatibility.
+        """GPU gauge values must be int for HGauge compatibility.
 
         parse_gpu_metrics() returns 'active' and 'freq_MHz' that are assigned
         to HGauge.value. Both must be int, not float.
@@ -418,9 +418,9 @@ class TestReturnValueStructure:
 
         for key, expected_type in expected_types.items():
             actual_type = type(metrics[key])
-            assert actual_type == expected_type, (
-                f"{key} should be {expected_type.__name__}, " f"got {actual_type.__name__}"
-            )
+            assert (
+                actual_type == expected_type
+            ), f"{key} should be {expected_type.__name__}, got {actual_type.__name__}"
 
     def test_gpu_metrics_dict_structure(self) -> None:
         """Validate complete structure of GPU metrics dictionary."""
