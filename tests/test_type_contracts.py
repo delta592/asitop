@@ -1,4 +1,4 @@
-"""Test type contracts to ensure compatibility with typed libraries like dashing.
+"""Test type contracts to ensure compatibility with the asitop TUI widgets.
 
 These tests validate that return values match the expected types for library
 contracts, catching issues that static type checkers find but runtime tests
@@ -51,14 +51,14 @@ def get_sample_powermetrics_data() -> dict[str, Any]:
 
 
 class TestGaugeValueTypes:
-    """Test that all gauge values are properly typed as int for dashing.HGauge/VGauge."""
+    """Test that all gauge values are properly typed as int for HGauge/VGauge."""
 
     @patch("psutil.virtual_memory")
     @patch("psutil.swap_memory")
     def test_ram_gauge_value_is_int(self, mock_swap: MagicMock, mock_ram: MagicMock) -> None:
-        """RAM gauge values must be int for dashing.HGauge compatibility.
+        """RAM gauge values must be int for HGauge compatibility.
 
-        The dashing library's HGauge.value expects int, not float or None.
+        HGauge.value expects int, not float or None.
         This test ensures get_ram_metrics_dict() returns proper types.
         """
         from asitop.utils import get_ram_metrics_dict
@@ -76,14 +76,14 @@ class TestGaugeValueTypes:
         metrics = get_ram_metrics_dict()
 
         # free_percent must be int, not float
-        assert isinstance(
-            metrics["free_percent"], int
-        ), f"free_percent must be int, got {type(metrics['free_percent'])}"
+        assert isinstance(metrics["free_percent"], int), (
+            f"free_percent must be int, got {type(metrics['free_percent'])}"
+        )
 
         # swap_free_percent must be int when swap exists
-        assert isinstance(
-            metrics["swap_free_percent"], int
-        ), f"swap_free_percent must be int, got {type(metrics['swap_free_percent'])}"
+        assert isinstance(metrics["swap_free_percent"], int), (
+            f"swap_free_percent must be int, got {type(metrics['swap_free_percent'])}"
+        )
 
         # Verify the value is in valid range
         assert 0 <= metrics["free_percent"] <= 100
@@ -120,7 +120,7 @@ class TestGaugeValueTypes:
         assert metrics["swap_free_percent"] == 0
 
     def test_cpu_gauge_values_are_int(self) -> None:
-        """CPU gauge values must be int for dashing.HGauge compatibility.
+        """CPU gauge values must be int for HGauge compatibility.
 
         parse_cpu_metrics() returns various *_active and *_freq_Mhz values that
         are assigned to HGauge.value. All must be int, not float.
@@ -136,9 +136,9 @@ class TestGaugeValueTypes:
 
         for key in active_keys:
             value = metrics[key]
-            assert isinstance(
-                value, int
-            ), f"{key} must be int, got {type(value)} with value {value}"
+            assert isinstance(value, int), (
+                f"{key} must be int, got {type(value)} with value {value}"
+            )
             assert 0 <= value <= 100, f"{key} percentage must be 0-100, got {value}"
 
         # All *_freq_Mhz values must be int (these are frequencies)
@@ -147,13 +147,13 @@ class TestGaugeValueTypes:
 
         for key in freq_keys:
             value = metrics[key]
-            assert isinstance(
-                value, int
-            ), f"{key} must be int, got {type(value)} with value {value}"
+            assert isinstance(value, int), (
+                f"{key} must be int, got {type(value)} with value {value}"
+            )
             assert value >= 0, f"{key} frequency must be non-negative, got {value}"
 
     def test_gpu_gauge_values_are_int(self) -> None:
-        """GPU gauge values must be int for dashing.HGauge compatibility.
+        """GPU gauge values must be int for HGauge compatibility.
 
         parse_gpu_metrics() returns 'active' and 'freq_MHz' that are assigned
         to HGauge.value. Both must be int, not float.
@@ -164,18 +164,18 @@ class TestGaugeValueTypes:
         metrics = parse_gpu_metrics(sample_data)
 
         # GPU active percentage must be int
-        assert isinstance(
-            metrics["active"], int
-        ), f"GPU active must be int, got {type(metrics['active'])}"
+        assert isinstance(metrics["active"], int), (
+            f"GPU active must be int, got {type(metrics['active'])}"
+        )
         assert 0 <= metrics["active"] <= 100, f"GPU active must be 0-100, got {metrics['active']}"
 
         # GPU frequency must be int
-        assert isinstance(
-            metrics["freq_MHz"], int
-        ), f"GPU freq_MHz must be int, got {type(metrics['freq_MHz'])}"
-        assert (
-            metrics["freq_MHz"] >= 0
-        ), f"GPU freq_MHz must be non-negative, got {metrics['freq_MHz']}"
+        assert isinstance(metrics["freq_MHz"], int), (
+            f"GPU freq_MHz must be int, got {type(metrics['freq_MHz'])}"
+        )
+        assert metrics["freq_MHz"] >= 0, (
+            f"GPU freq_MHz must be non-negative, got {metrics['freq_MHz']}"
+        )
 
     def test_calculate_gpu_usage_returns_int(self) -> None:
         """calculate_gpu_usage must return int for utilization percentage.
@@ -194,9 +194,9 @@ class TestGaugeValueTypes:
         assert 0 <= gpu_util <= 100, f"GPU utilization must be 0-100, got {gpu_util}"
 
         # freq can be int or None
-        assert gpu_freq is None or isinstance(
-            gpu_freq, int
-        ), f"GPU frequency must be int or None, got {type(gpu_freq)}"
+        assert gpu_freq is None or isinstance(gpu_freq, int), (
+            f"GPU frequency must be int or None, got {type(gpu_freq)}"
+        )
 
         # Test with power-based fallback
         gpu_metrics_idle = {"freq_MHz": 0, "active": 0}
@@ -207,9 +207,9 @@ class TestGaugeValueTypes:
             last_gpu_freq_mhz=1200,
         )
 
-        assert isinstance(
-            gpu_util, int
-        ), f"GPU utilization (power-based) must be int, got {type(gpu_util)}"
+        assert isinstance(gpu_util, int), (
+            f"GPU utilization (power-based) must be int, got {type(gpu_util)}"
+        )
         assert 0 <= gpu_util <= 100, f"GPU utilization must be 0-100, got {gpu_util}"
 
 
@@ -265,9 +265,9 @@ class TestNumericValueRanges:
             if key.endswith("_freq_Mhz"):
                 freq = metrics[key]
                 # Allow 0 for idle, otherwise should be in reasonable range
-                assert (
-                    freq == 0 or 100 <= freq <= 5000
-                ), f"{key} frequency {freq} MHz seems unreasonable"
+                assert freq == 0 or 100 <= freq <= 5000, (
+                    f"{key} frequency {freq} MHz seems unreasonable"
+                )
 
         # Power values should be positive floats
         assert metrics["cpu_W"] >= 0
@@ -400,9 +400,9 @@ class TestReturnValueStructure:
             "swap_free_GB",
             "swap_free_percent",
         }
-        assert (
-            set(metrics.keys()) == required_keys
-        ), f"Missing or extra keys: {set(metrics.keys()) ^ required_keys}"
+        assert set(metrics.keys()) == required_keys, (
+            f"Missing or extra keys: {set(metrics.keys()) ^ required_keys}"
+        )
 
         # Type validation for each key
         expected_types = {
@@ -419,7 +419,7 @@ class TestReturnValueStructure:
         for key, expected_type in expected_types.items():
             actual_type = type(metrics[key])
             assert actual_type == expected_type, (
-                f"{key} should be {expected_type.__name__}, " f"got {actual_type.__name__}"
+                f"{key} should be {expected_type.__name__}, got {actual_type.__name__}"
             )
 
     def test_gpu_metrics_dict_structure(self) -> None:
@@ -431,9 +431,9 @@ class TestReturnValueStructure:
 
         # Required keys
         required_keys = {"freq_MHz", "active"}
-        assert (
-            set(metrics.keys()) == required_keys
-        ), f"Missing or extra keys: {set(metrics.keys()) ^ required_keys}"
+        assert set(metrics.keys()) == required_keys, (
+            f"Missing or extra keys: {set(metrics.keys()) ^ required_keys}"
+        )
 
         # Type validation
         assert isinstance(metrics["freq_MHz"], int)

@@ -9,9 +9,8 @@ import time
 import tty
 from types import SimpleNamespace
 
-from dashing import HChart, HGauge, HSplit, VGauge, VSplit
-
 from .parsers import CPUMetrics, GpuMetricsOut, display_power_watts, format_extended_status
+from .tui import HChart, HGauge, HSplit, VGauge, VSplit
 from .utils import (
     cleanup_powermetrics,
     clear_console,
@@ -329,9 +328,9 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
 
                     if args.show_cores:
                         for core_count, i in enumerate(cpu_metrics_dict["e_core"]):
-                            e_core_gauges[core_count % 4].title = (
-                                f"Core-{i + 1} {cpu_metrics_dict[f'E-Cluster{i}_active']}%"
-                            )
+                            e_core_gauges[
+                                core_count % 4
+                            ].title = f"Core-{i + 1} {cpu_metrics_dict[f'E-Cluster{i}_active']}%"
                             e_core_gauges[core_count % 4].value = int(
                                 cpu_metrics_dict[f"E-Cluster{i}_active"]
                             )
@@ -344,9 +343,9 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                             prefix = "Core-" if p_core_count < MIN_P_CORES_ABBREVIATED else "C-"
                             gauge_idx = core_count % MAX_P_CORES_SINGLE_ROW
                             core_key = f"P-Cluster{i}_active"
-                            core_gauges[gauge_idx].title = (
-                                f"{prefix}{i + 1} {cpu_metrics_dict[core_key]}%"
-                            )
+                            core_gauges[
+                                gauge_idx
+                            ].title = f"{prefix}{i + 1} {cpu_metrics_dict[core_key]}%"
                             core_gauges[gauge_idx].value = int(cpu_metrics_dict[core_key])
 
                     gpu_power_w = display_power_watts(

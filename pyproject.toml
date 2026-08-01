@@ -22,7 +22,6 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 dependencies = [
-    "dashing==0.1.0",
     "psutil==7.2.2",
 ]
 
@@ -93,7 +92,7 @@ strict_optional = true
 # disallow_untyped_defs = false
 # best practice setting
 disallow_untyped_defs = true
-# Global ignore for missing imports (psutil, dashing)
+# Global ignore for missing imports (psutil)
 # TODO: Consider migrating to per-module ignores for better type coverage
 # ignore_missing_imports = true
 # Disable noisy checks that don't add value for this codebase
@@ -104,7 +103,7 @@ no_implicit_reexport = true
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["psutil.*", "dashing.*"]
+module = ["psutil.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
@@ -200,6 +199,14 @@ ignore = [
     "PLR0915", # Too many statements - main CLI logic
     "PLR1702", # Too many nested blocks - main event loop
     "T201",    # print statements - CLI tool uses print
+]
+
+# TUI module mirrors the former dashing tile hierarchy
+"asitop/tui.py" = [
+    "FBT001",  # Boolean positional args - matches dashing API
+    "FBT002",
+    "PLR6301", # Tile helpers are instance methods for subclass overrides
+    "SLF001",  # Sibling tiles call _display within the tile hierarchy
 ]
 
 [tool.ruff.lint.pylint]
