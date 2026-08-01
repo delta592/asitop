@@ -312,11 +312,13 @@ class HGauge(Tile):
             row_parts.extend((color.escape(), _HBAR_ELEMENTS[-1]))
 
         selector = int((bar_width - int(bar_width)) * 7)
-        row_parts.extend((
-            _HBAR_ELEMENTS[selector],
-            self.text_color.escape(),
-            _HBAR_ELEMENTS[0] * filler_width,
-        ))
+        row_parts.extend(
+            (
+                _HBAR_ELEMENTS[selector],
+                self.text_color.escape(),
+                _HBAR_ELEMENTS[0] * filler_width,
+            )
+        )
 
         for dx in range(tbox.h):
             move = tbox.t.move(tbox.x + dx, tbox.y)
