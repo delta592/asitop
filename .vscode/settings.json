@@ -11,9 +11,12 @@
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
+      "source.organizeImports": "explicit",
+      "source.fixAll.ruff": "explicit"
     }
   },
+  "ruff.enable": true,
+  "ruff.nativeServer": "on",
   "python.analysis.autoImportCompletions": true,
   "python.analysis.stubPath": "typings",
   "python.terminal.activateEnvironment": true,

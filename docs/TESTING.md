@@ -395,7 +395,7 @@ Since commit f393344, the project has received major quality enhancements:
    - Upgraded to comprehensive ALL rules selection
    - Strategic ignores for practical development
    - Enhanced per-file ignore patterns
-   - Modern formatter configuration
+   - Linting only (Black is the sole formatter)
 
 2. **Mypy Configuration** (commit 4dbd578)
    - Strict type checking enabled
@@ -406,7 +406,7 @@ Since commit f393344, the project has received major quality enhancements:
    - Modern best practices with explicit settings
    - Support for Python 3.10-3.14
    - Comprehensive exclusion patterns
-   - Aligned with Ruff formatter
+   - Sole formatter; Ruff is not used to format
 
 ### Code Refactoring
 All code has been refactored to comply with:

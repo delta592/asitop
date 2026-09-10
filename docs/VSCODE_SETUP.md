@@ -113,8 +113,8 @@ For the best development experience:
 - **Pylance** (ms-python.vscode-pylance) - Fast Python type checker
 
 ### Recommended
-- **Black Formatter** (ms-python.black-formatter) - Auto-format on save
-- **Ruff** (charliermarsh.ruff) - Fast linting
+- **Black Formatter** (ms-python.black-formatter) - Sole formatter; auto-format on save
+- **Ruff** (charliermarsh.ruff) - Fast linting only (do not use Ruff as a formatter)
 - **Even Better TOML** (tamasfe.even-better-toml) - TOML syntax support
 
 ### Optional

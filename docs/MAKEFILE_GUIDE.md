@@ -246,8 +246,9 @@ make fix
 Automatically fixes linting issues that Ruff can safely correct:
 - Import sorting
 - Unused imports
-- Code style issues
-- Many PEP 8 violations
+- Many PEP 8 / bugbear / naming issues
+
+This does **not** format files. Black is the sole formatter (`make format`).
 
 ### Format Code (Black)
 
@@ -255,7 +256,7 @@ Automatically fixes linting issues that Ruff can safely correct:
 make format
 ```
 
-Formats code using Black, the uncompromising Python formatter:
+Formats code using Black, the sole Python formatter for this repository:
 - Consistent code style across the project
 - Line length: 100 characters
 - Automatic formatting

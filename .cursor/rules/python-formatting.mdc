@@ -1,0 +1,10 @@
+---
+description: Black is the sole Python formatter; Ruff is lint-only
+alwaysApply: true
+---
+
+# Python formatting
+
+- Format Python with Black only: `make format` or `uv run black asitop/ tests/`.
+- Use Ruff only as a linter: `make lint` / `uv run ruff check`. Never run `ruff format`.
+- Line length is 100 (`[tool.black]` in pyproject.toml).

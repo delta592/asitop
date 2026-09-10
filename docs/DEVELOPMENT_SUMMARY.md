@@ -85,9 +85,9 @@ The project has undergone comprehensive modernization since commit f393344:
 - Upgraded to ALL rules enabled with strategic ignores
 - Preview mode for modern best practices
 - Enhanced per-file ignore patterns for __init__.py, tests, and main module
-- Modern formatter configuration (quote-style, docstring-code-format)
 - Comprehensive complexity limits (max-args=7, max-branches=15)
 - Modern import sorting with isort configuration
+- Linting only; Black is the sole formatter
 
 **Mypy Configuration (commit 4dbd578):**
 - Strict type checking enabled (disallow_untyped_defs = true)
@@ -106,14 +106,14 @@ The project has undergone comprehensive modernization since commit f393344:
 - Modern best practices with explicit settings
 - Support for Python 3.10-3.14
 - Comprehensive exclusion patterns (12 directories)
-- Aligned with Ruff formatter for consistency
+- Sole formatter for this repository; do not run `ruff format`
 
 **Code Refactoring:**
 All source and test code has been refactored to:
 - Pass strict mypy type checking
 - Pass Pyright type checking (additional safety layer)
 - Comply with comprehensive Ruff linting rules
-- Follow consistent Black/Ruff formatting
+- Follow consistent Black formatting
 - Use modern Python patterns and best practices
 
 ### 4. Modern Dependency Management with uv

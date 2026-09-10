@@ -107,21 +107,21 @@ lint: install-dev
 	@echo "Running Ruff linter..."
 	$(UV_RUN) ruff check asitop/ tests/
 
-## Auto-fix linting issues with Ruff
+## Auto-fix linting issues with Ruff (does not format; use `make format`)
 .PHONY: fix
 fix: install-dev
 	@echo "Auto-fixing linting issues with Ruff..."
 	$(UV_RUN) ruff check --fix asitop/ tests/
 	@echo "Linting issues fixed"
 
-## Format code with Black
+## Format code with Black (sole formatter)
 .PHONY: format
 format: install-dev
 	@echo "Formatting code with Black..."
 	$(UV_RUN) black asitop/ tests/
 	@echo "Code formatted"
 
-## Check if code is formatted correctly (Black)
+## Check if code is formatted correctly with Black
 .PHONY: format-check
 format-check: install-dev
 	@echo "Checking code formatting with Black..."

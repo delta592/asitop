@@ -138,8 +138,8 @@ ignore = [
 
     # Code style preferences
     "SIM108",  # Use ternary operator - can reduce readability
-    "COM812",  # Trailing comma missing - conflicts with formatter
-    "ISC001",  # Implicit string concatenation - conflicts with formatter
+    "COM812",  # Trailing comma missing - conflicts with Black
+    "ISC001",  # Implicit string concatenation - conflicts with Black
 
     # Import patterns
     "TID252",  # Relative imports - allow for package structure
@@ -245,16 +245,12 @@ max-complexity = 15
 classmethod-decorators = ["classmethod"]
 
 [tool.ruff.format]
-# Modern formatter configuration
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
-docstring-code-format = true
-docstring-code-line-length = "dynamic"
+# Black is the sole formatter (`make format`). Exclude everything so
+# `ruff format` is a no-op if an editor or agent invokes it.
+exclude = ["**"]
 
 [tool.black]
-# Line length consistent with ruff
+# Sole Python formatter. Do not run `ruff format`.
 line-length = 100
 
 # Target the minimum supported Python version

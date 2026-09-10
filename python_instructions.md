@@ -25,9 +25,11 @@ applyTo: '**/*.py'
 
 ## Code Style and Formatting
 
-- Follow the **PEP 8** style guide for Python.
+- Follow the **PEP 8** style guide for Python, as applied by **Black**.
+- Black is the sole formatter (`make format` / `uv run black asitop/ tests/`).
+- Ruff is the linter only (`make lint` / `uv run ruff check`). Never run `ruff format`.
 - Maintain proper indentation (use 4 spaces for each level of indentation).
-- Ensure lines do not exceed 79 characters.
+- Line length is 100 characters (`tool.black.line-length` in pyproject.toml).
 - Place function and class docstrings immediately after the `def` or `class` keyword.
 - Use blank lines to separate functions, classes, and code blocks where appropriate.
 

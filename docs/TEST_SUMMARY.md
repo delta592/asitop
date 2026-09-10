@@ -300,7 +300,7 @@ Since commit f393344, the project has undergone comprehensive modernization:
 - **ALL rules enabled**: Comprehensive linting with strategic ignores
 - **Preview mode**: Modern best practices and upcoming improvements
 - **Enhanced per-file ignores**: Customized for different file types
-- **Modern formatter**: Aligned with Black, includes docstring formatting
+- **Linting only**: Black is the sole formatter; do not run `ruff format`
 
 ### Mypy Configuration (commit 4dbd578)
 - **Strict type checking**: disallow_untyped_defs enabled
@@ -311,13 +311,13 @@ Since commit f393344, the project has undergone comprehensive modernization:
 - **Modern best practices**: Explicit configuration for all settings
 - **Python 3.10-3.14 support**: Multi-version target compatibility
 - **Comprehensive excludes**: 12 common cache/build directories
-- **Aligned with Ruff**: Consistent formatting across tools
+- **Sole formatter**: `make format` / `black --check` are the format gates
 
 ### Code Refactoring
 All source code has been refactored to meet strict standards:
 - **Type annotations**: Full compliance with strict mypy
 - **Linting**: Passes comprehensive Ruff rules
-- **Formatting**: Consistent Black/Ruff formatting
+- **Formatting**: Consistent Black formatting
 - **Best practices**: Modern Python patterns throughout
 
 ## Success Metrics
