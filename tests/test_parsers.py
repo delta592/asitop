@@ -741,10 +741,12 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Format extended sampler fields for the UI title."""
         from asitop.parsers import format_extended_status
 
-        status = format_extended_status({
-            "cpu_power_zones_engaged": 0.5,
-            "network": {"rx_mbps": 12.5, "tx_mbps": 3.2},
-        })
+        status = format_extended_status(
+            {
+                "cpu_power_zones_engaged": 0.5,
+                "network": {"rx_mbps": 12.5, "tx_mbps": 3.2},
+            }
+        )
         assert "zones:50%" in status
         assert "net" in status
 
@@ -752,11 +754,13 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Format battery, disk, and SFI throttle fields."""
         from asitop.parsers import format_extended_status
 
-        status = format_extended_status({
-            "sfi_throttle": {"class_a": True, "class_b": True},
-            "battery_discharge_mw": 8500,
-            "disk": {"read_mbps": 120.0, "write_mbps": 45.0},
-        })
+        status = format_extended_status(
+            {
+                "sfi_throttle": {"class_a": True, "class_b": True},
+                "battery_discharge_mw": 8500,
+                "disk": {"read_mbps": 120.0, "write_mbps": 45.0},
+            }
+        )
         assert "SFI:2" in status
         assert "bat:8.5W" in status
         assert "disk R120/W45MB/s" in status
@@ -771,13 +775,15 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Parse optional extended powermetrics samplers."""
         from asitop.parsers import parse_extended_metrics
 
-        result = parse_extended_metrics({
-            "sfi": {"sfi_classes": {"gpu": True, "cpu": False}},
-            "processor": {"cpu_power_zones_engaged": 0.25},
-            "battery": {"discharge_rate_mw": 5000},
-            "network": {"ibyte_rate": 1_000_000, "obyte_rate": 500_000},
-            "disk": {"rbytes_per_s": 2_000_000, "wbytes_per_s": 1_000_000},
-        })
+        result = parse_extended_metrics(
+            {
+                "sfi": {"sfi_classes": {"gpu": True, "cpu": False}},
+                "processor": {"cpu_power_zones_engaged": 0.25},
+                "battery": {"discharge_rate_mw": 5000},
+                "network": {"ibyte_rate": 1_000_000, "obyte_rate": 500_000},
+                "disk": {"rbytes_per_s": 2_000_000, "wbytes_per_s": 1_000_000},
+            }
+        )
 
         assert result["sfi_throttle"] == {"gpu": True}
         assert math.isclose(result["cpu_power_zones_engaged"], 0.25)
@@ -802,13 +808,15 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Parse ANE metrics from a list of block dicts."""
         from asitop.parsers import parse_ane_metrics
 
-        result = parse_ane_metrics({
-            "ane": [
-                {"freq_hz": 800, "idle_ratio": 0.2},
-                {"freq_hz": 1000, "idle_ratio": 0.4},
-                "skip-me",
-            ]
-        })
+        result = parse_ane_metrics(
+            {
+                "ane": [
+                    {"freq_hz": 800, "idle_ratio": 0.2},
+                    {"freq_hz": 1000, "idle_ratio": 0.4},
+                    "skip-me",
+                ]
+            }
+        )
 
         assert result["ane_freq_MHz"] == 1000
         assert result["ane_active"] == 70

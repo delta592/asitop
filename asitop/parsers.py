@@ -299,20 +299,22 @@ def parse_bandwidth_metrics(powermetrics_parse: PowermetricsDict) -> BandwidthMe
         + bandwidth_metrics_dict["VENC2 DCS WR"]
         + bandwidth_metrics_dict["VENC3 DCS WR"]
     )
-    bandwidth_metrics_dict["MEDIA DCS"] = sum([
-        bandwidth_metrics_dict["ISP DCS RD"],
-        bandwidth_metrics_dict["ISP DCS WR"],
-        bandwidth_metrics_dict["STRM CODEC DCS RD"],
-        bandwidth_metrics_dict["STRM CODEC DCS WR"],
-        bandwidth_metrics_dict["PRORES DCS RD"],
-        bandwidth_metrics_dict["PRORES DCS WR"],
-        bandwidth_metrics_dict["VDEC DCS RD"],
-        bandwidth_metrics_dict["VDEC DCS WR"],
-        bandwidth_metrics_dict["VENC DCS RD"],
-        bandwidth_metrics_dict["VENC DCS WR"],
-        bandwidth_metrics_dict["JPG DCS RD"],
-        bandwidth_metrics_dict["JPG DCS WR"],
-    ])
+    bandwidth_metrics_dict["MEDIA DCS"] = sum(
+        [
+            bandwidth_metrics_dict["ISP DCS RD"],
+            bandwidth_metrics_dict["ISP DCS WR"],
+            bandwidth_metrics_dict["STRM CODEC DCS RD"],
+            bandwidth_metrics_dict["STRM CODEC DCS WR"],
+            bandwidth_metrics_dict["PRORES DCS RD"],
+            bandwidth_metrics_dict["PRORES DCS WR"],
+            bandwidth_metrics_dict["VDEC DCS RD"],
+            bandwidth_metrics_dict["VDEC DCS WR"],
+            bandwidth_metrics_dict["VENC DCS RD"],
+            bandwidth_metrics_dict["VENC DCS WR"],
+            bandwidth_metrics_dict["JPG DCS RD"],
+            bandwidth_metrics_dict["JPG DCS WR"],
+        ]
+    )
     return bandwidth_metrics_dict
 
 
