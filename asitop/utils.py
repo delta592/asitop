@@ -117,6 +117,36 @@ SOC_SPECS = {
         "cpu_max_bw": 1092,  # Estimated: 2x M4 Max bandwidth
         "gpu_max_bw": 1092,
     },
+    "Apple M5": {
+        "cpu_max_power": 25,  # Base M5 (Super + Efficiency cores)
+        "gpu_max_power": 22,  # Up to 10-core GPU
+        "cpu_max_bw": 153,  # 153 GB/s unified memory bandwidth
+        "gpu_max_bw": 153,
+    },
+    "Apple M5 Pro": {
+        "cpu_max_power": 45,  # Up to 6 Super + 12 Performance cores
+        "gpu_max_power": 55,  # Up to 20-core GPU
+        "cpu_max_bw": 307,  # 307 GB/s unified memory bandwidth
+        "gpu_max_bw": 307,
+    },
+    "Apple M5 Max": {
+        "cpu_max_power": 55,  # 6 Super + 12 Performance cores, dual-die
+        "gpu_max_power": 100,  # Up to 40-core GPU
+        "cpu_max_bw": 614,  # 614 GB/s (40-core GPU variant)
+        "gpu_max_bw": 614,
+    },
+    "Apple M5 Ultra": {
+        "cpu_max_power": 110,  # Estimated: 2x M5 Max (12 Super + 24 Performance)
+        "gpu_max_power": 200,  # Estimated: up to 80-core GPU
+        "cpu_max_bw": 1200,  # 1.2 TB/s unified memory bandwidth
+        "gpu_max_bw": 1200,
+    },
+    "Apple M6": {
+        "cpu_max_power": 28,  # 2 Super + 4 Performance + 6 Efficiency cores
+        "gpu_max_power": 25,  # 12-core GPU
+        "cpu_max_bw": 170,  # 170 GB/s unified memory bandwidth
+        "gpu_max_bw": 170,
+    },
     # Default fallback for unknown chips
     "_default": {
         "cpu_max_power": 20,
@@ -398,11 +428,15 @@ def get_cpu_info() -> dict[str, str]:
     return cpu_info_dict
 
 
-def get_core_counts() -> dict[str, int]:
-    """Get E-core and P-core counts using sysctl.
+def get_core_counts() -> dict[str, int | str]:
+    """Get per-perflevel core counts and names using sysctl.
+
+    M1-M4 expose Performance (perflevel0) and Efficiency (perflevel1).
+    M5 Max/Ultra expose Super (perflevel0) and Performance (perflevel1)
+    with no Efficiency cores. M6 adds a third Efficiency perflevel.
 
     Returns:
-        Dictionary with hw.perflevel0.logicalcpu and hw.perflevel1.logicalcpu
+        Dictionary of hw.perflevelN.logicalcpu (int) and hw.perflevelN.name (str)
     """
     result = subprocess.run(
         ["sysctl", "-a"],
@@ -411,20 +445,60 @@ def get_core_counts() -> dict[str, int]:
         check=False,
     )
 
-    cores_info_lines = result.stdout.split("\n")
-    data_fields = ["hw.perflevel0.logicalcpu", "hw.perflevel1.logicalcpu"]
-    cores_info_dict = {}
-
-    for line in cores_info_lines:
-        for field in data_fields:
-            if field in line and ":" in line:
-                try:
-                    value = int(line.split(":", 1)[1].strip())
-                    cores_info_dict[field] = value
-                except (ValueError, IndexError):
-                    continue
+    cores_info_dict: dict[str, int | str] = {}
+    for line in result.stdout.split("\n"):
+        if ":" not in line or "hw.perflevel" not in line:
+            continue
+        key, raw = line.split(":", 1)
+        key = key.strip()
+        value = raw.strip()
+        if not key.startswith("hw.perflevel"):
+            continue
+        if key.endswith(".logicalcpu"):
+            try:
+                cores_info_dict[key] = int(value)
+            except ValueError:
+                continue
+        elif key.endswith(".name"):
+            cores_info_dict[key] = value
 
     return cores_info_dict
+
+
+def _core_counts_from_perflevels(
+    core_counts_dict: dict[str, int | str],
+) -> tuple[int | str, int | str, int | str]:
+    """Map sysctl perflevel names to Super / Performance / Efficiency counts.
+
+    Falls back to the historical perflevel0=P, perflevel1=E mapping when
+    names are missing (older mocks and pre-named sysctl output).
+    """
+    s_core_count = 0
+    p_core_count = 0
+    e_core_count = 0
+    found_any = False
+
+    for level in range(8):
+        cpu_key = f"hw.perflevel{level}.logicalcpu"
+        if cpu_key not in core_counts_dict:
+            continue
+        count = core_counts_dict[cpu_key]
+        if not isinstance(count, int):
+            continue
+        found_any = True
+        name = str(core_counts_dict.get(f"hw.perflevel{level}.name", "")).strip().lower()
+        if "super" in name:
+            s_core_count = count
+        elif "efficiency" in name or name in {"e-core", "e core", "e"}:
+            e_core_count = count
+        elif "performance" in name or name in {"p-core", "p core", "p"} or level == 0:
+            p_core_count = count
+        elif level == 1:
+            e_core_count = count
+
+    if not found_any:
+        return "?", "?", "?"
+    return s_core_count, p_core_count, e_core_count
 
 
 def get_gpu_cores() -> int | str:
@@ -460,14 +534,7 @@ def get_soc_info() -> dict[str, Any]:
     cpu_info_dict = get_cpu_info()
     core_counts_dict = get_core_counts()
 
-    e_core_count: int | str
-    p_core_count: int | str
-    try:
-        e_core_count = core_counts_dict["hw.perflevel1.logicalcpu"]
-        p_core_count = core_counts_dict["hw.perflevel0.logicalcpu"]
-    except KeyError:
-        e_core_count = "?"
-        p_core_count = "?"
+    s_core_count, p_core_count, e_core_count = _core_counts_from_perflevels(core_counts_dict)
 
     soc_name = cpu_info_dict.get("machdep.cpu.brand_string", "Unknown")
     core_count_str = cpu_info_dict.get("machdep.cpu.core_count", "0")
@@ -489,5 +556,6 @@ def get_soc_info() -> dict[str, Any]:
         "gpu_max_bw": specs["gpu_max_bw"],
         "e_core_count": e_core_count,
         "p_core_count": p_core_count,
+        "s_core_count": s_core_count,
         "gpu_core_count": get_gpu_cores(),
     }

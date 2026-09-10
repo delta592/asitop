@@ -357,6 +357,27 @@ class TestGetCoreCounts(unittest.TestCase):
 
         assert result["hw.perflevel0.logicalcpu"] == 6
         assert result["hw.perflevel1.logicalcpu"] == 2
+        assert result["hw.perflevel0.name"] == "P-Core"
+
+    @patch("subprocess.run")
+    def test_get_core_counts_m5_max_super(self, mock_run: MagicMock) -> None:
+        """Parse Super and Performance perflevel names used by M5 Max."""
+        from asitop.utils import get_core_counts
+
+        mock_output = (
+            "hw.perflevel0.logicalcpu: 6\n"
+            "hw.perflevel0.name: Super\n"
+            "hw.perflevel1.logicalcpu: 12\n"
+            "hw.perflevel1.name: Performance\n"
+        )
+        mock_run.return_value.stdout = mock_output
+
+        result = get_core_counts()
+
+        assert result["hw.perflevel0.logicalcpu"] == 6
+        assert result["hw.perflevel0.name"] == "Super"
+        assert result["hw.perflevel1.logicalcpu"] == 12
+        assert result["hw.perflevel1.name"] == "Performance"
 
     @patch("subprocess.run")
     def test_get_core_counts_invalid_value(self, mock_run: MagicMock) -> None:
@@ -487,6 +508,7 @@ class TestGetSOCInfo(unittest.TestCase):
         assert result["core_count"] == 8
         assert result["e_core_count"] == 4
         assert result["p_core_count"] == 4
+        assert result["s_core_count"] == 0
         assert result["gpu_core_count"] == 8
         assert result["cpu_max_power"] == 20
         assert result["gpu_max_power"] == 20
@@ -601,7 +623,7 @@ class TestGetSOCInfo(unittest.TestCase):
         from asitop.utils import get_soc_info
 
         mock_cpu_info.return_value = {
-            "machdep.cpu.brand_string": "Apple M5",
+            "machdep.cpu.brand_string": "Apple M9",
             "machdep.cpu.core_count": "12",
         }
         mock_core_counts.return_value = {
@@ -666,6 +688,99 @@ class TestGetSOCInfo(unittest.TestCase):
 
         assert result["e_core_count"] == "?"
         assert result["p_core_count"] == "?"
+        assert result["s_core_count"] == "?"
+
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
+    def test_get_soc_info_m4_max_named_perflevels(
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
+    ) -> None:
+        """macOS 27 names perflevel0 Performance and perflevel1 Efficiency."""
+        from asitop.utils import get_soc_info
+
+        mock_cpu_info.return_value = {
+            "machdep.cpu.brand_string": "Apple M4 Max",
+            "machdep.cpu.core_count": "14",
+        }
+        mock_core_counts.return_value = {
+            "hw.perflevel0.logicalcpu": 10,
+            "hw.perflevel0.name": "Performance",
+            "hw.perflevel1.logicalcpu": 4,
+            "hw.perflevel1.name": "Efficiency",
+        }
+        mock_gpu_cores.return_value = 40
+
+        result = get_soc_info()
+
+        assert result["name"] == "Apple M4 Max"
+        assert result["s_core_count"] == 0
+        assert result["p_core_count"] == 10
+        assert result["e_core_count"] == 4
+        assert result["cpu_max_power"] == 50
+        assert result["gpu_max_power"] == 92
+
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
+    def test_get_soc_info_m5_max(
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
+    ) -> None:
+        """M5 Max has Super + Performance cores and no Efficiency cores."""
+        from asitop.utils import get_soc_info
+
+        mock_cpu_info.return_value = {
+            "machdep.cpu.brand_string": "Apple M5 Max",
+            "machdep.cpu.core_count": "18",
+        }
+        mock_core_counts.return_value = {
+            "hw.perflevel0.logicalcpu": 6,
+            "hw.perflevel0.name": "Super",
+            "hw.perflevel1.logicalcpu": 12,
+            "hw.perflevel1.name": "Performance",
+        }
+        mock_gpu_cores.return_value = 40
+
+        result = get_soc_info()
+
+        assert result["name"] == "Apple M5 Max"
+        assert result["s_core_count"] == 6
+        assert result["p_core_count"] == 12
+        assert result["e_core_count"] == 0
+        assert result["cpu_max_power"] == 55
+        assert result["gpu_max_power"] == 100
+        assert result["cpu_max_bw"] == 614
+
+    @patch("asitop.utils.get_gpu_cores")
+    @patch("asitop.utils.get_core_counts")
+    @patch("asitop.utils.get_cpu_info")
+    def test_get_soc_info_m5_ultra(
+        self, mock_cpu_info: MagicMock, mock_core_counts: MagicMock, mock_gpu_cores: MagicMock
+    ) -> None:
+        """M5 Ultra is 12 Super + 24 Performance with 1.2 TB/s bandwidth."""
+        from asitop.utils import get_soc_info
+
+        mock_cpu_info.return_value = {
+            "machdep.cpu.brand_string": "Apple M5 Ultra",
+            "machdep.cpu.core_count": "36",
+        }
+        mock_core_counts.return_value = {
+            "hw.perflevel0.logicalcpu": 12,
+            "hw.perflevel0.name": "Super",
+            "hw.perflevel1.logicalcpu": 24,
+            "hw.perflevel1.name": "Performance",
+        }
+        mock_gpu_cores.return_value = 80
+
+        result = get_soc_info()
+
+        assert result["name"] == "Apple M5 Ultra"
+        assert result["s_core_count"] == 12
+        assert result["p_core_count"] == 24
+        assert result["e_core_count"] == 0
+        assert result["cpu_max_power"] == 110
+        assert result["gpu_max_power"] == 200
+        assert result["cpu_max_bw"] == 1200
 
 
 class TestRunPowermetricsProcess(unittest.TestCase):

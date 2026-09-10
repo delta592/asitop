@@ -8,6 +8,7 @@ import termios
 import time
 import tty
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 from .parsers import CPUMetrics, GpuMetricsOut, display_power_watts, format_extended_status
 from .tui import HChart, HGauge, HSplit, VGauge, VSplit
@@ -19,6 +20,9 @@ from .utils import (
     parse_powermetrics,
     run_powermetrics_process,
 )
+
+if TYPE_CHECKING:
+    from .tui import Tile
 
 # Constants for power limits and thresholds
 ANE_MAX_POWER_WATTS = 8.0
@@ -32,6 +36,76 @@ DEFAULT_COLOR_SCHEME = 2
 MIN_SAMPLE_INTERVAL_MS = 100
 MAX_P_CORES_SINGLE_ROW = 8
 MIN_P_CORES_ABBREVIATED = 6
+
+
+def _as_core_count(value: object) -> int:
+    """Coerce SoC core-count fields to a non-negative int."""
+    return value if isinstance(value, int) else 0
+
+
+def _make_core_gauges(count: int, color: int) -> list[VGauge]:
+    """Create one vertical gauge per core."""
+    return [VGauge(val=0, color=color, border_color=color) for _ in range(count)]
+
+
+def _gauge_rows(gauges: list[VGauge]) -> list[HSplit]:
+    """Split per-core gauges into rows of MAX_P_CORES_SINGLE_ROW."""
+    return [
+        HSplit(*gauges[start : start + MAX_P_CORES_SINGLE_ROW])
+        for start in range(0, len(gauges), MAX_P_CORES_SINGLE_ROW)
+    ]
+
+
+def _format_cpu_title(soc_info_dict: dict[str, object]) -> str:
+    """Build the processor-pane title, including Super cores when present."""
+    s_count = _as_core_count(soc_info_dict.get("s_core_count", 0))
+    p_count = _as_core_count(soc_info_dict.get("p_core_count", 0))
+    e_count = _as_core_count(soc_info_dict.get("e_core_count", 0))
+    gpu = soc_info_dict.get("gpu_core_count", "?")
+    parts: list[str] = []
+    if s_count:
+        parts.append(f"{s_count}S")
+        if p_count:
+            parts.append(f"{p_count}P")
+        if e_count:
+            parts.append(f"{e_count}E")
+    else:
+        parts.extend((f"{e_count}E", f"{p_count}P"))
+    parts.append(f"{gpu}GPU")
+    return f"{soc_info_dict['name']} (cores: {'+'.join(parts)})"
+
+
+def _update_cluster_gauge(gauge: HGauge, metrics: CPUMetrics, role: str, label: str) -> None:
+    """Set a cluster usage gauge from parsed powermetrics fields."""
+    active = int(metrics.get(f"{role}-Cluster_active", 0) or 0)
+    freq = int(metrics.get(f"{role}-Cluster_freq_Mhz", 0) or 0)
+    gauge.title = f"{label} Usage: {active}% @ {freq} MHz"
+    gauge.value = active
+
+
+def _core_ids(metrics: CPUMetrics, key: str) -> list[int]:
+    """Return a list of core IDs from parsed CPU metrics."""
+    value = metrics.get(key, [])
+    if not isinstance(value, list):
+        return []
+    return [int(core_id) for core_id in value]
+
+
+def _update_core_gauges(
+    gauges: list[VGauge],
+    core_ids: list[int],
+    metrics: CPUMetrics,
+    prefix: str,
+) -> None:
+    """Update per-core VGauge titles and values."""
+    abbreviate = len(gauges) >= MIN_P_CORES_ABBREVIATED
+    label = "C-" if abbreviate else "Core-"
+    for idx, core_id in enumerate(core_ids):
+        if idx >= len(gauges):
+            break
+        core_key = f"{prefix}{core_id}_active"
+        gauges[idx].title = f"{label}{core_id + 1} {metrics[core_key]}%"
+        gauges[idx].value = int(metrics[core_key])
 
 
 def check_for_quit_key() -> bool:
@@ -115,42 +189,44 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
     print("\n[1/3] Loading ASITOP\n")
     print("\033[?25l")
 
-    cpu1_gauge = HGauge(title="E-CPU Usage", val=0, color=args.color)
-    cpu2_gauge = HGauge(title="P-CPU Usage", val=0, color=args.color)
+    cpu_e_gauge = HGauge(title="E-CPU Usage", val=0, color=args.color)
+    cpu_p_gauge = HGauge(title="P-CPU Usage", val=0, color=args.color)
+    cpu_s_gauge = HGauge(title="S-CPU Usage", val=0, color=args.color)
     gpu_gauge = HGauge(title="GPU Usage", val=0, color=args.color)
     ane_gauge = HGauge(title="ANE", val=0, color=args.color)
     gpu_ane_gauges = [gpu_gauge, ane_gauge]
 
     soc_info_dict = get_soc_info()
-    e_core_count = soc_info_dict["e_core_count"]
-    e_core_gauges = [
-        VGauge(val=0, color=args.color, border_color=args.color) for _ in range(e_core_count)
-    ]
-    p_core_count = soc_info_dict["p_core_count"]
-    p_core_gauges = [
-        VGauge(val=0, color=args.color, border_color=args.color)
-        for _ in range(min(p_core_count, MAX_P_CORES_SINGLE_ROW))
-    ]
-    p_core_split = [
-        HSplit(
-            *p_core_gauges,
-        )
-    ]
-    if p_core_count > MAX_P_CORES_SINGLE_ROW:
-        p_core_gauges_ext = [
-            VGauge(val=0, color=args.color, border_color=args.color)
-            for _ in range(p_core_count - MAX_P_CORES_SINGLE_ROW)
-        ]
-        p_core_split.append(
-            HSplit(
-                *p_core_gauges_ext,
-            )
-        )
-    processor_gauges = (
-        [cpu1_gauge, HSplit(*e_core_gauges), cpu2_gauge, *p_core_split, *gpu_ane_gauges]
-        if args.show_cores
-        else [HSplit(cpu1_gauge, cpu2_gauge), HSplit(*gpu_ane_gauges)]
-    )
+    e_core_count = _as_core_count(soc_info_dict.get("e_core_count", 0))
+    p_core_count = _as_core_count(soc_info_dict.get("p_core_count", 0))
+    s_core_count = _as_core_count(soc_info_dict.get("s_core_count", 0))
+    e_core_gauges = _make_core_gauges(e_core_count, args.color)
+    p_core_gauges = _make_core_gauges(p_core_count, args.color)
+    s_core_gauges = _make_core_gauges(s_core_count, args.color)
+
+    cluster_gauges: list[HGauge] = []
+    if s_core_count:
+        cluster_gauges.append(cpu_s_gauge)
+    if e_core_count or not s_core_count:
+        cluster_gauges.append(cpu_e_gauge)
+    if p_core_count or not s_core_count:
+        cluster_gauges.append(cpu_p_gauge)
+
+    processor_gauges: list[Tile]
+    if args.show_cores:
+        processor_gauges = []
+        if s_core_count:
+            processor_gauges.append(cpu_s_gauge)
+            processor_gauges.extend(_gauge_rows(s_core_gauges))
+        if e_core_count:
+            processor_gauges.append(cpu_e_gauge)
+            processor_gauges.extend(_gauge_rows(e_core_gauges))
+        if p_core_count:
+            processor_gauges.append(cpu_p_gauge)
+            processor_gauges.extend(_gauge_rows(p_core_gauges))
+        processor_gauges.extend(gpu_ane_gauges)
+    else:
+        processor_gauges = [HSplit(*cluster_gauges), HSplit(*gpu_ane_gauges)]
     processor_split = VSplit(
         *processor_gauges,
         title="Processor Utilization",
@@ -207,13 +283,7 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
 
     usage_gauges = ui.items[0]
 
-    cpu_title = (
-        f"{soc_info_dict['name']} "
-        f"(cores: {soc_info_dict['e_core_count']}E+"
-        f"{soc_info_dict['p_core_count']}P+"
-        f"{soc_info_dict['gpu_core_count']}GPU)"
-    )
-    usage_gauges.title = cpu_title
+    usage_gauges.title = _format_cpu_title(soc_info_dict)
     cpu_max_power = soc_info_dict["cpu_max_power"]
     gpu_max_power = soc_info_dict["gpu_max_power"]
 
@@ -314,39 +384,29 @@ def main() -> tuple[subprocess.Popen[bytes], str]:
                     else:
                         thermal_throttle = "yes"
 
-                    cpu1_gauge.title = (
-                        f"E-CPU Usage: {cpu_metrics_dict['E-Cluster_active']}% @ "
-                        f"{cpu_metrics_dict['E-Cluster_freq_Mhz']} MHz"
-                    )
-                    cpu1_gauge.value = int(cpu_metrics_dict["E-Cluster_active"])
-
-                    cpu2_gauge.title = (
-                        f"P-CPU Usage: {cpu_metrics_dict['P-Cluster_active']}% @ "
-                        f"{cpu_metrics_dict['P-Cluster_freq_Mhz']} MHz"
-                    )
-                    cpu2_gauge.value = int(cpu_metrics_dict["P-Cluster_active"])
+                    _update_cluster_gauge(cpu_e_gauge, cpu_metrics_dict, "E", "E-CPU")
+                    _update_cluster_gauge(cpu_p_gauge, cpu_metrics_dict, "P", "P-CPU")
+                    _update_cluster_gauge(cpu_s_gauge, cpu_metrics_dict, "S", "S-CPU")
 
                     if args.show_cores:
-                        for core_count, i in enumerate(cpu_metrics_dict["e_core"]):
-                            e_core_gauges[core_count % 4].title = (
-                                f"Core-{i + 1} {cpu_metrics_dict[f'E-Cluster{i}_active']}%"
-                            )
-                            e_core_gauges[core_count % 4].value = int(
-                                cpu_metrics_dict[f"E-Cluster{i}_active"]
-                            )
-                        for core_count, i in enumerate(cpu_metrics_dict["p_core"]):
-                            core_gauges = (
-                                p_core_gauges
-                                if core_count < MAX_P_CORES_SINGLE_ROW
-                                else p_core_gauges_ext
-                            )
-                            prefix = "Core-" if p_core_count < MIN_P_CORES_ABBREVIATED else "C-"
-                            gauge_idx = core_count % MAX_P_CORES_SINGLE_ROW
-                            core_key = f"P-Cluster{i}_active"
-                            core_gauges[gauge_idx].title = (
-                                f"{prefix}{i + 1} {cpu_metrics_dict[core_key]}%"
-                            )
-                            core_gauges[gauge_idx].value = int(cpu_metrics_dict[core_key])
+                        _update_core_gauges(
+                            e_core_gauges,
+                            _core_ids(cpu_metrics_dict, "e_core"),
+                            cpu_metrics_dict,
+                            "E-Cluster",
+                        )
+                        _update_core_gauges(
+                            p_core_gauges,
+                            _core_ids(cpu_metrics_dict, "p_core"),
+                            cpu_metrics_dict,
+                            "P-Cluster",
+                        )
+                        _update_core_gauges(
+                            s_core_gauges,
+                            _core_ids(cpu_metrics_dict, "s_core"),
+                            cpu_metrics_dict,
+                            "S-Cluster",
+                        )
 
                     gpu_power_w = display_power_watts(
                         cpu_metrics_dict["gpu_W"],

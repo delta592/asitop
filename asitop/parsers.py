@@ -1,4 +1,4 @@
-from typing import Any, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 # Type alias for improved readability (Python 3.12+)
 type PowermetricsDict = dict[str, Any]
@@ -299,23 +299,67 @@ def parse_bandwidth_metrics(powermetrics_parse: PowermetricsDict) -> BandwidthMe
         + bandwidth_metrics_dict["VENC2 DCS WR"]
         + bandwidth_metrics_dict["VENC3 DCS WR"]
     )
-    bandwidth_metrics_dict["MEDIA DCS"] = sum(
-        [
-            bandwidth_metrics_dict["ISP DCS RD"],
-            bandwidth_metrics_dict["ISP DCS WR"],
-            bandwidth_metrics_dict["STRM CODEC DCS RD"],
-            bandwidth_metrics_dict["STRM CODEC DCS WR"],
-            bandwidth_metrics_dict["PRORES DCS RD"],
-            bandwidth_metrics_dict["PRORES DCS WR"],
-            bandwidth_metrics_dict["VDEC DCS RD"],
-            bandwidth_metrics_dict["VDEC DCS WR"],
-            bandwidth_metrics_dict["VENC DCS RD"],
-            bandwidth_metrics_dict["VENC DCS WR"],
-            bandwidth_metrics_dict["JPG DCS RD"],
-            bandwidth_metrics_dict["JPG DCS WR"],
-        ]
-    )
+    bandwidth_metrics_dict["MEDIA DCS"] = sum([
+        bandwidth_metrics_dict["ISP DCS RD"],
+        bandwidth_metrics_dict["ISP DCS WR"],
+        bandwidth_metrics_dict["STRM CODEC DCS RD"],
+        bandwidth_metrics_dict["STRM CODEC DCS WR"],
+        bandwidth_metrics_dict["PRORES DCS RD"],
+        bandwidth_metrics_dict["PRORES DCS WR"],
+        bandwidth_metrics_dict["VDEC DCS RD"],
+        bandwidth_metrics_dict["VDEC DCS WR"],
+        bandwidth_metrics_dict["VENC DCS RD"],
+        bandwidth_metrics_dict["VENC DCS WR"],
+        bandwidth_metrics_dict["JPG DCS RD"],
+        bandwidth_metrics_dict["JPG DCS WR"],
+    ])
     return bandwidth_metrics_dict
+
+
+type ClusterRole = Literal["E", "P", "S"]
+
+
+def _cluster_letter(name: str) -> str:
+    """Return the powermetrics cluster-family letter (E, P, S, M, ...)."""
+    if name.lower().startswith("super"):
+        return "S"
+    return name[0].upper() if name else "?"
+
+
+def _cluster_role(name: str, *, p_is_super: bool) -> ClusterRole:
+    """Map a powermetrics cluster name to E, P, or S.
+
+    M5 Max/Ultra expose Super cores as ``S-Cluster`` (macOS 26.4+) or still as
+    ``P-Cluster``, and the new Performance cores as ``M0-Cluster`` / ``M1-Cluster``.
+    When M-clusters are present and no S-cluster is, treat P-clusters as Super.
+    """
+    letter = _cluster_letter(name)
+    if letter == "E":
+        return "E"
+    if letter == "S":
+        return "S"
+    if letter == "M":
+        return "P"
+    if letter == "P":
+        return "S" if p_is_super else "P"
+    return "P"
+
+
+def _apply_role_aggregates(
+    cpu_metric_dict: CPUMetrics,
+    role_actives: dict[ClusterRole, list[int]],
+    role_freqs: dict[ClusterRole, list[int]],
+    cores: dict[ClusterRole, list[int]],
+) -> None:
+    """Write per-role core lists and averaged cluster gauges."""
+    for role in ("E", "P", "S"):
+        cpu_metric_dict[f"{role.lower()}_core"] = cores[role]
+        actives = role_actives[role]
+        freqs = role_freqs[role]
+        cpu_metric_dict[f"{role}-Cluster_active"] = (
+            int(sum(actives) / len(actives)) if actives else 0
+        )
+        cpu_metric_dict[f"{role}-Cluster_freq_Mhz"] = max(freqs) if freqs else 0
 
 
 def parse_cpu_metrics(powermetrics_parse: PowermetricsDict) -> CPUMetrics:
@@ -327,78 +371,43 @@ def parse_cpu_metrics(powermetrics_parse: PowermetricsDict) -> CPUMetrics:
     Returns:
         Dictionary with CPU frequencies, utilization, and power metrics
     """
-    e_core: list[int] = []
-    p_core: list[int] = []
     cpu_metrics = powermetrics_parse["processor"]
     cpu_metric_dict: CPUMetrics = {}
 
-    # cpu_clusters
     elapsed_s = float(powermetrics_parse.get("elapsed_ns") or 0) / 1e9
     instant_power = "cpu_power" in cpu_metrics
 
     cpu_clusters = cpu_metrics["clusters"]
+    letters = [_cluster_letter(cluster["name"]) for cluster in cpu_clusters]
+    p_is_super = "M" in letters and "S" not in letters
+
+    role_actives: dict[ClusterRole, list[int]] = {"E": [], "P": [], "S": []}
+    role_freqs: dict[ClusterRole, list[int]] = {"E": [], "P": [], "S": []}
+    cores: dict[ClusterRole, list[int]] = {"E": [], "P": [], "S": []}
+
     for cluster in cpu_clusters:
         cluster_name = cluster["name"]
+        role = _cluster_role(cluster_name, p_is_super=p_is_super)
+        prefix = f"{role}-Cluster"
         cluster_freq_mhz = _freq_mhz_from_hz_and_dvfm(
             cluster.get("freq_hz"),
             cluster.get("dvfm_states"),
         )
+        cluster_active = round((1 - cluster["idle_ratio"]) * 100)
         cpu_metric_dict[f"{cluster_name}_freq_Mhz"] = cluster_freq_mhz
-        cpu_metric_dict[f"{cluster_name}_active"] = round((1 - cluster["idle_ratio"]) * 100)
+        cpu_metric_dict[f"{cluster_name}_active"] = cluster_active
+        role_actives[role].append(cluster_active)
+        role_freqs[role].append(cluster_freq_mhz)
 
         for cpu in cluster["cpus"]:
-            name = "E-Cluster" if cluster_name[0] == "E" else "P-Cluster"
-            core = e_core if name[0] == "E" else p_core
-            core.append(cpu["cpu"])
-            cpu_metric_dict[f"{name}{cpu['cpu']}_freq_Mhz"] = _freq_mhz_from_hz_and_dvfm(
+            cores[role].append(cpu["cpu"])
+            cpu_metric_dict[f"{prefix}{cpu['cpu']}_freq_Mhz"] = _freq_mhz_from_hz_and_dvfm(
                 cpu.get("freq_hz"),
                 cpu.get("dvfm_states"),
             )
-            cpu_metric_dict[f"{name}{cpu['cpu']}_active"] = round((1 - cpu["idle_ratio"]) * 100)
-    cpu_metric_dict["e_core"] = e_core
-    cpu_metric_dict["p_core"] = p_core
-    # Handle M1 Ultra dual E-clusters
-    if "E-Cluster_active" not in cpu_metric_dict and "E0-Cluster_active" in cpu_metric_dict:
-        cpu_metric_dict["E-Cluster_active"] = int(
-            (cpu_metric_dict["E0-Cluster_active"] + cpu_metric_dict["E1-Cluster_active"]) / 2
-        )
-    if "E-Cluster_freq_Mhz" not in cpu_metric_dict and "E0-Cluster_freq_Mhz" in cpu_metric_dict:
-        cpu_metric_dict["E-Cluster_freq_Mhz"] = max(
-            cpu_metric_dict["E0-Cluster_freq_Mhz"], cpu_metric_dict["E1-Cluster_freq_Mhz"]
-        )
-    # Handle M1 Ultra quad P-clusters
-    if "P-Cluster_active" not in cpu_metric_dict:
-        if "P2-Cluster_active" in cpu_metric_dict:
-            # M1 Ultra with 4 P-clusters
-            cpu_metric_dict["P-Cluster_active"] = int(
-                (
-                    cpu_metric_dict["P0-Cluster_active"]
-                    + cpu_metric_dict["P1-Cluster_active"]
-                    + cpu_metric_dict["P2-Cluster_active"]
-                    + cpu_metric_dict["P3-Cluster_active"]
-                )
-                / 4
-            )
-        elif "P0-Cluster_active" in cpu_metric_dict:
-            # M1 Ultra with 2 P-clusters
-            cpu_metric_dict["P-Cluster_active"] = int(
-                (cpu_metric_dict["P0-Cluster_active"] + cpu_metric_dict["P1-Cluster_active"]) / 2
-            )
-    if "P-Cluster_freq_Mhz" not in cpu_metric_dict:
-        if "P2-Cluster_freq_Mhz" in cpu_metric_dict:
-            # M1 Ultra with 4 P-clusters
-            freqs = [
-                cpu_metric_dict["P0-Cluster_freq_Mhz"],
-                cpu_metric_dict["P1-Cluster_freq_Mhz"],
-                cpu_metric_dict["P2-Cluster_freq_Mhz"],
-                cpu_metric_dict["P3-Cluster_freq_Mhz"],
-            ]
-            cpu_metric_dict["P-Cluster_freq_Mhz"] = max(freqs)
-        elif "P0-Cluster_freq_Mhz" in cpu_metric_dict:
-            # M1 Ultra with 2 P-clusters
-            cpu_metric_dict["P-Cluster_freq_Mhz"] = max(
-                cpu_metric_dict["P0-Cluster_freq_Mhz"], cpu_metric_dict["P1-Cluster_freq_Mhz"]
-            )
+            cpu_metric_dict[f"{prefix}{cpu['cpu']}_active"] = round((1 - cpu["idle_ratio"]) * 100)
+
+    _apply_role_aggregates(cpu_metric_dict, role_actives, role_freqs, cores)
     # Power: prefer instantaneous mW rails (macOS 15+/26.x); fall back to energy / elapsed.
     gpu_sampler = powermetrics_parse.get("gpu", {})
     gpu_energy_proc = cpu_metrics.get("gpu_energy")

@@ -6,6 +6,7 @@ UI initialization, and the main monitoring loop integration.
 """
 
 import sys
+from typing import Any
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -751,6 +752,90 @@ class TestExtendedPCoreSupport(unittest.TestCase):
                     pass
 
                 # Test passes if extended P-core layout was initialized without errors
+                assert True
+
+
+class TestM5UltraCoreLayout(unittest.TestCase):
+    """Test Super + Performance layout used by M5 Max/Ultra."""
+
+    def test_m5_ultra_s_and_p_core_gauges(self) -> None:
+        """M5 Ultra with 12 Super and 24 Performance cores initializes without errors."""
+        test_args = ["asitop", "--show_cores"]
+        with patch.object(sys, "argv", test_args):
+            import importlib
+
+            import asitop.asitop as asitop_module
+
+            importlib.reload(asitop_module)
+
+            with (
+                patch("asitop.asitop.get_soc_info") as mock_get_soc,
+                patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
+                patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
+                patch("asitop.asitop.time.sleep"),
+            ):
+                mock_get_soc.return_value = {
+                    "name": "Apple M5 Ultra",
+                    "core_count": 36,
+                    "e_core_count": 0,
+                    "p_core_count": 24,
+                    "s_core_count": 12,
+                    "gpu_core_count": 80,
+                    "cpu_max_power": 110,
+                    "gpu_max_power": 200,
+                    "cpu_max_bw": 1200,
+                    "gpu_max_bw": 1200,
+                }
+
+                mock_process = MagicMock()
+                mock_run_pm.return_value = mock_process
+
+                s_core_ids = list(range(12))
+                p_core_ids = list(range(12, 36))
+                metrics: dict[str, Any] = {
+                    "E-Cluster_active": 0,
+                    "P-Cluster_active": 60,
+                    "S-Cluster_active": 70,
+                    "E-Cluster_freq_Mhz": 0,
+                    "P-Cluster_freq_Mhz": 4200,
+                    "S-Cluster_freq_Mhz": 4608,
+                    "e_core": [],
+                    "p_core": p_core_ids,
+                    "s_core": s_core_ids,
+                    "ane_W": 1,
+                    "cpu_W": 40,
+                    "gpu_W": 80,
+                    "package_W": 121,
+                }
+                for core_id in s_core_ids:
+                    metrics[f"S-Cluster{core_id}_active"] = 70
+                for core_id in p_core_ids:
+                    metrics[f"P-Cluster{core_id}_active"] = 55
+
+                valid_reading = (
+                    metrics,
+                    {"active": 70, "freq_MHz": 1600},
+                    "Nominal",
+                    None,
+                    1234567890,
+                    {},
+                )
+
+                call_count = [0]
+
+                def mock_parse_side_effect(timecode):
+                    call_count[0] += 1
+                    if call_count[0] == 1:
+                        return valid_reading
+                    raise KeyboardInterrupt
+
+                mock_parse_pm.side_effect = mock_parse_side_effect
+
+                try:
+                    asitop_module.main()
+                except (KeyboardInterrupt, SystemExit):
+                    pass
+
                 assert True
 
 

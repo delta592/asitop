@@ -516,6 +516,157 @@ class TestParseCPUMetricsEdgeCases(unittest.TestCase):
         assert result["P-Cluster_freq_Mhz"] == 3100
 
 
+class TestParseCPUMetricsM5Clusters(unittest.TestCase):
+    """Tests for M5 Super / Performance (M-cluster) powermetrics naming."""
+
+    def test_parse_cpu_metrics_m5_max_s_and_m_clusters(self) -> None:
+        """S-Cluster is Super; M0/M1 clusters are the new Performance cores."""
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {
+                        "name": "S-Cluster",
+                        "freq_hz": 4608000000,
+                        "idle_ratio": 0.2,
+                        "cpus": [
+                            {"cpu": 0, "freq_hz": 4608000000, "idle_ratio": 0.1},
+                            {"cpu": 1, "freq_hz": 4608000000, "idle_ratio": 0.3},
+                        ],
+                    },
+                    {
+                        "name": "M0-Cluster",
+                        "freq_hz": 4308000000,
+                        "idle_ratio": 0.4,
+                        "cpus": [
+                            {"cpu": 6, "freq_hz": 4308000000, "idle_ratio": 0.4},
+                            {"cpu": 7, "freq_hz": 4308000000, "idle_ratio": 0.5},
+                        ],
+                    },
+                    {
+                        "name": "M1-Cluster",
+                        "freq_hz": 4200000000,
+                        "idle_ratio": 0.6,
+                        "cpus": [
+                            {"cpu": 12, "freq_hz": 4200000000, "idle_ratio": 0.6},
+                        ],
+                    },
+                ],
+                "ane_energy": 1000,
+                "cpu_energy": 5000,
+                "gpu_energy": 3000,
+                "combined_power": 9000,
+            }
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        assert result["S-Cluster_active"] == 80
+        assert result["S-Cluster_freq_Mhz"] == 4608
+        assert result["s_core"] == [0, 1]
+        assert result["S-Cluster0_active"] == 90
+        assert result["P-Cluster_active"] == int((60 + 40) / 2)
+        assert result["P-Cluster_freq_Mhz"] == 4308
+        assert result["p_core"] == [6, 7, 12]
+        assert result["e_core"] == []
+        assert result["E-Cluster_active"] == 0
+        assert result["E-Cluster_freq_Mhz"] == 0
+
+    def test_parse_cpu_metrics_m5_legacy_p_cluster_is_super(self) -> None:
+        """Older powermetrics still labels Super cores as P-Cluster when M-clusters exist."""
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {
+                        "name": "P-Cluster",
+                        "freq_hz": 4608000000,
+                        "idle_ratio": 0.25,
+                        "cpus": [{"cpu": 0, "freq_hz": 4608000000, "idle_ratio": 0.25}],
+                    },
+                    {
+                        "name": "M0-Cluster",
+                        "freq_hz": 4000000000,
+                        "idle_ratio": 0.5,
+                        "cpus": [{"cpu": 6, "freq_hz": 4000000000, "idle_ratio": 0.5}],
+                    },
+                ],
+                "ane_energy": 0,
+                "cpu_energy": 0,
+                "gpu_energy": 0,
+                "combined_power": 0,
+            }
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        assert result["s_core"] == [0]
+        assert result["S-Cluster_active"] == 75
+        assert result["S-Cluster_freq_Mhz"] == 4608
+        assert result["p_core"] == [6]
+        assert result["P-Cluster_active"] == 50
+        assert result["P-Cluster_freq_Mhz"] == 4000
+
+    def test_parse_cpu_metrics_m5_ultra_quad_die_m_clusters(self) -> None:
+        """M5 Ultra averages many M-clusters and Super clusters across four dies."""
+        from asitop.parsers import parse_cpu_metrics
+
+        mock_data: dict[str, Any] = {
+            "processor": {
+                "clusters": [
+                    {
+                        "name": "S0-Cluster",
+                        "freq_hz": 4500000000,
+                        "idle_ratio": 0.1,
+                        "cpus": [{"cpu": 0, "freq_hz": 4500000000, "idle_ratio": 0.1}],
+                    },
+                    {
+                        "name": "S1-Cluster",
+                        "freq_hz": 4400000000,
+                        "idle_ratio": 0.3,
+                        "cpus": [{"cpu": 6, "freq_hz": 4400000000, "idle_ratio": 0.3}],
+                    },
+                    {
+                        "name": "M0-Cluster",
+                        "freq_hz": 4000000000,
+                        "idle_ratio": 0.2,
+                        "cpus": [{"cpu": 12, "freq_hz": 4000000000, "idle_ratio": 0.2}],
+                    },
+                    {
+                        "name": "M1-Cluster",
+                        "freq_hz": 3900000000,
+                        "idle_ratio": 0.4,
+                        "cpus": [{"cpu": 18, "freq_hz": 3900000000, "idle_ratio": 0.4}],
+                    },
+                    {
+                        "name": "M2-Cluster",
+                        "freq_hz": 3800000000,
+                        "idle_ratio": 0.6,
+                        "cpus": [{"cpu": 24, "freq_hz": 3800000000, "idle_ratio": 0.6}],
+                    },
+                    {
+                        "name": "M3-Cluster",
+                        "freq_hz": 3700000000,
+                        "idle_ratio": 0.8,
+                        "cpus": [{"cpu": 30, "freq_hz": 3700000000, "idle_ratio": 0.8}],
+                    },
+                ],
+                "ane_energy": 0,
+                "cpu_energy": 0,
+                "gpu_energy": 0,
+                "combined_power": 0,
+            }
+        }
+        result = parse_cpu_metrics(mock_data)
+
+        assert result["S-Cluster_active"] == int((90 + 70) / 2)
+        assert result["S-Cluster_freq_Mhz"] == 4500
+        assert result["P-Cluster_active"] == int((80 + 60 + 40 + 20) / 4)
+        assert result["P-Cluster_freq_Mhz"] == 4000
+        assert result["s_core"] == [0, 6]
+        assert result["p_core"] == [12, 18, 24, 30]
+
+
 class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
     """Tests for macOS 15+/26.x powermetrics fields."""
 
@@ -590,12 +741,10 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Format extended sampler fields for the UI title."""
         from asitop.parsers import format_extended_status
 
-        status = format_extended_status(
-            {
-                "cpu_power_zones_engaged": 0.5,
-                "network": {"rx_mbps": 12.5, "tx_mbps": 3.2},
-            }
-        )
+        status = format_extended_status({
+            "cpu_power_zones_engaged": 0.5,
+            "network": {"rx_mbps": 12.5, "tx_mbps": 3.2},
+        })
         assert "zones:50%" in status
         assert "net" in status
 
@@ -603,13 +752,11 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Format battery, disk, and SFI throttle fields."""
         from asitop.parsers import format_extended_status
 
-        status = format_extended_status(
-            {
-                "sfi_throttle": {"class_a": True, "class_b": True},
-                "battery_discharge_mw": 8500,
-                "disk": {"read_mbps": 120.0, "write_mbps": 45.0},
-            }
-        )
+        status = format_extended_status({
+            "sfi_throttle": {"class_a": True, "class_b": True},
+            "battery_discharge_mw": 8500,
+            "disk": {"read_mbps": 120.0, "write_mbps": 45.0},
+        })
         assert "SFI:2" in status
         assert "bat:8.5W" in status
         assert "disk R120/W45MB/s" in status
@@ -624,15 +771,13 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Parse optional extended powermetrics samplers."""
         from asitop.parsers import parse_extended_metrics
 
-        result = parse_extended_metrics(
-            {
-                "sfi": {"sfi_classes": {"gpu": True, "cpu": False}},
-                "processor": {"cpu_power_zones_engaged": 0.25},
-                "battery": {"discharge_rate_mw": 5000},
-                "network": {"ibyte_rate": 1_000_000, "obyte_rate": 500_000},
-                "disk": {"rbytes_per_s": 2_000_000, "wbytes_per_s": 1_000_000},
-            }
-        )
+        result = parse_extended_metrics({
+            "sfi": {"sfi_classes": {"gpu": True, "cpu": False}},
+            "processor": {"cpu_power_zones_engaged": 0.25},
+            "battery": {"discharge_rate_mw": 5000},
+            "network": {"ibyte_rate": 1_000_000, "obyte_rate": 500_000},
+            "disk": {"rbytes_per_s": 2_000_000, "wbytes_per_s": 1_000_000},
+        })
 
         assert result["sfi_throttle"] == {"gpu": True}
         assert math.isclose(result["cpu_power_zones_engaged"], 0.25)
@@ -657,15 +802,13 @@ class TestParseCPUMetricsModernPowermetrics(unittest.TestCase):
         """Parse ANE metrics from a list of block dicts."""
         from asitop.parsers import parse_ane_metrics
 
-        result = parse_ane_metrics(
-            {
-                "ane": [
-                    {"freq_hz": 800, "idle_ratio": 0.2},
-                    {"freq_hz": 1000, "idle_ratio": 0.4},
-                    "skip-me",
-                ]
-            }
-        )
+        result = parse_ane_metrics({
+            "ane": [
+                {"freq_hz": 800, "idle_ratio": 0.2},
+                {"freq_hz": 1000, "idle_ratio": 0.4},
+                "skip-me",
+            ]
+        })
 
         assert result["ane_freq_MHz"] == 1000
         assert result["ane_active"] == 70
