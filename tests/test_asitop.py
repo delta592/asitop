@@ -6,9 +6,16 @@ UI initialization, and the main monitoring loop integration.
 """
 
 import sys
+import time
+from types import SimpleNamespace
 from typing import Any
 import unittest
 from unittest.mock import MagicMock, patch
+
+
+def _private_clock(sleep: MagicMock | None = None) -> SimpleNamespace:
+    """Module-local time stand-in so sleep mocks do not touch the shared clock."""
+    return SimpleNamespace(sleep=sleep or MagicMock(), time=time.time)
 
 
 class TestArgumentParsing(unittest.TestCase):
@@ -130,7 +137,7 @@ class TestMainFunction(unittest.TestCase):
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
                 patch("asitop.asitop.clear_console") as mock_clear,
-                patch("asitop.asitop.time.sleep") as mock_sleep,
+                patch("asitop.asitop.time", _private_clock()),
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -205,7 +212,7 @@ class TestMainFunction(unittest.TestCase):
                 patch("asitop.asitop.get_soc_info") as mock_get_soc,
                 patch("asitop.asitop.run_powermetrics_process") as mock_run,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse,
-                patch("asitop.asitop.time.sleep") as mock_sleep,
+                patch("asitop.asitop.time", _private_clock()) as mock_time,
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1 Max",
@@ -243,7 +250,7 @@ class TestMainFunction(unittest.TestCase):
                 mock_parse.return_value = mock_reading
 
                 # Mock sleep to raise exception after first call
-                mock_sleep.side_effect = KeyboardInterrupt
+                mock_time.sleep.side_effect = KeyboardInterrupt
 
                 try:
                     asitop_module.main()
@@ -614,7 +621,7 @@ class TestGetReadingRetry(unittest.TestCase):
                 patch("asitop.asitop.get_soc_info") as mock_get_soc,
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
-                patch("asitop.asitop.time.sleep") as mock_sleep,
+                patch("asitop.asitop.time", _private_clock()) as mock_time,
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -670,7 +677,7 @@ class TestGetReadingRetry(unittest.TestCase):
                     pass
 
                 # Verify sleep was called while waiting for data
-                assert mock_sleep.call_count >= 2
+                assert mock_time.sleep.call_count >= 2
 
 
 class TestExtendedPCoreSupport(unittest.TestCase):
@@ -695,7 +702,7 @@ class TestExtendedPCoreSupport(unittest.TestCase):
                 patch("asitop.asitop.get_soc_info") as mock_get_soc,
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
-                patch("asitop.asitop.time.sleep"),
+                patch("asitop.asitop.time", _private_clock()),
             ):
                 # M1 Ultra config with 16 P-cores
                 mock_get_soc.return_value = {
@@ -772,7 +779,7 @@ class TestM5UltraCoreLayout(unittest.TestCase):
                 patch("asitop.asitop.get_soc_info") as mock_get_soc,
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
-                patch("asitop.asitop.time.sleep"),
+                patch("asitop.asitop.time", _private_clock()),
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M5 Ultra",
@@ -860,7 +867,7 @@ class TestShowCoresMode(unittest.TestCase):
                 patch("asitop.asitop.get_soc_info") as mock_get_soc,
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
-                patch("asitop.asitop.time.sleep"),
+                patch("asitop.asitop.time", _private_clock()),
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -948,7 +955,7 @@ class TestRAMSwapHandling(unittest.TestCase):
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
                 patch("asitop.asitop.get_ram_metrics_dict") as mock_get_ram,
-                patch("asitop.asitop.time.sleep") as mock_sleep,
+                patch("asitop.asitop.time", _private_clock()) as mock_time,
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -1021,7 +1028,7 @@ class TestRAMSwapHandling(unittest.TestCase):
                     if sleep_count[0] > 3:
                         raise KeyboardInterrupt
 
-                mock_sleep.side_effect = mock_sleep_side_effect
+                mock_time.sleep.side_effect = mock_sleep_side_effect
 
                 try:
                     asitop_module.main()
@@ -1055,7 +1062,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
                 patch("asitop.asitop.clear_console"),
-                patch("asitop.asitop.time.sleep"),
+                patch("asitop.asitop.time", _private_clock()),
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
@@ -1130,7 +1137,7 @@ class TestMainLoopEdgeCases(unittest.TestCase):
                 patch("asitop.asitop.run_powermetrics_process") as mock_run_pm,
                 patch("asitop.asitop.parse_powermetrics") as mock_parse_pm,
                 patch("asitop.asitop.clear_console"),
-                patch("asitop.asitop.time.sleep"),
+                patch("asitop.asitop.time", _private_clock()),
             ):
                 mock_get_soc.return_value = {
                     "name": "Apple M1",
